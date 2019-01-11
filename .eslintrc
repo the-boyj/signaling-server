@@ -11,6 +11,8 @@
     "mocha": true
   },
   "rules": {
+    // enforce consistent linebreak style
+    "linebreak-style": 0,
     // disallow the use of console
     "no-console": 0,
     // enforce consistent line breaks inside braces
