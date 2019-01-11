@@ -1,0 +1,7 @@
+# nodejs with babel
+node_modules/
+bin/
+
+# jetbrains IDE
+.idea/
+*.iml
