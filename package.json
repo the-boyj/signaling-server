@@ -43,7 +43,12 @@
     "eslint-plugin-jsx-a11y": "^6.1.2",
     "eslint-plugin-react": "^7.12.3",
     "mocha": "^5.2.0",
-    "rimraf": "^2.6.3"
+    "rimraf": "^2.6.3",
+    "socket.io-client": "^2.2.0"
   },
-  "dependencies": {}
+  "dependencies": {
+    "chai-http": "^4.2.1",
+    "express": "^4.16.4",
+    "socket.io": "^2.2.0"
+  }
 }

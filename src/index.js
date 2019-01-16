@@ -1,3 +1,7 @@
-import message from './hello';
+import Server from './server';
 
-console.log(`${message} world`);
+const server = new Server();
+server.start()
+  .then(() => {
+    console.log(`server started at port : ${server.port}`);
+  });
