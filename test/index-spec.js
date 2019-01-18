@@ -5,6 +5,7 @@ import io from 'socket.io-client';
 
 import Server from '../src/server';
 
+const { describe, it } = mocha;
 const { assert, expect } = chai;
 const options = null;
 const user1 = { name: 'user1' };
@@ -14,12 +15,15 @@ server.start()
   .then(() => {
     chai.use(chaiHttp);
 
-    mocha.describe('GET /echo test', () => {
-      mocha.it('should echo hello', (done) => {
+    describe('GET /echo test', () => {
+      it('should echo hello', done => {
+        // given
         const echoUrl = '/echo?msg=hello';
+        // when
         chai.request(server.app)
           .get(echoUrl)
           .end((err, res) => {
+            // then
             expect(res).to.have.status(200);
             assert.equal(res.text, 'hello');
             done();
@@ -27,26 +31,43 @@ server.start()
       });
     });
 
-    mocha.describe('Event Message Test', () => {
+    describe('Event Message Test', () => {
       // "dial" : A가 시그널링 서버한테 통화 요청
-      mocha.describe('Dial', () => {
-        mocha.it('user1 should dial to Signaling server', (done) => {
+      describe('Dial', () => {
+        it('user1 should dial to Signaling server', done => {
+          // given
           const url = `http://localhost:${server.port}`;
-          const client1 = io.connect(url, options);
+          const client = io.connect(url, options);
 
-          client1.on('connect', () => {
+          // when
+          client.on('connect', () => {
             // after server receive 'dial',
             // server send the data 'created success'
             // in event name 'created'
-            client1.on('created', (data) => {
+            client.on('created', data => {
+              // then
               assert.equal(data, 'created success');
               done();
             });
-            client1.emit('dial', user1);
-          }).on('connect_error', (error) => {
+            client.emit('dial', user1);
+          }).on('connect_error', error => {
             // if connection is invalid,
             // test should fail
             assert.fail(error);
+            done();
+          });
+        });
+
+        it('should fail to connect with wrong address', done => {
+          // given
+          const wrongUrl = 'http://localhost:1234';
+          const client = io.connect(wrongUrl, options);
+
+          // when
+          client.on('connect', () => {
+            // nothing to do
+          }).on('connect_error', () => {
+            assert.equal(client.connected, false);
             done();
           });
         });
