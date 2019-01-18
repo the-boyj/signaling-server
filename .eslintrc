@@ -11,6 +11,8 @@
     "mocha": true
   },
   "rules": {
+    //Require parens in arrow function arguments
+    "arrow-parens": 0,
     // enforce consistent linebreak style
     "linebreak-style": 0,
     // disallow the use of console
