@@ -1,6 +1,6 @@
 {
   "name": "signaling-server",
-  "version": "1.1.1-issue16",
+  "version": "1.1.2",
   "description": "The BOYJ WebRTC signaling server",
   "scripts": {
     "clean": "rimraf ./bin",
