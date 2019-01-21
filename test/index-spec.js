@@ -16,7 +16,7 @@ server.start()
     chai.use(chaiHttp);
 
     describe('GET /echo test', () => {
-      it('should echo hello', done => {
+      it('should echo hello', (done) => {
         // given
         const echoUrl = '/echo?msg=hello';
         // when
@@ -34,7 +34,7 @@ server.start()
     describe('Event Message Test', () => {
       // "dial" : A가 시그널링 서버한테 통화 요청
       describe('Dial', () => {
-        it('user1 should dial to Signaling server', done => {
+        it('user1 should dial to Signaling server', (done) => {
           // given
           const url = `http://localhost:${server.port}`;
           const client = io.connect(url, options);
@@ -44,13 +44,13 @@ server.start()
             // after server receive 'dial',
             // server send the data 'created success'
             // in event name 'created'
-            client.on('created', data => {
+            client.on('created', (data) => {
               // then
               assert.equal(data, 'created success');
               done();
             });
             client.emit('dial', user1);
-          }).on('connect_error', error => {
+          }).on('connect_error', (error) => {
             // if connection is invalid,
             // test should fail
             assert.fail(error);
@@ -58,7 +58,7 @@ server.start()
           });
         });
 
-        it('should fail to connect with wrong address', done => {
+        it('should fail to connect with wrong address', (done) => {
           // given
           const wrongUrl = 'http://localhost:1234';
           const client = io.connect(wrongUrl, options);
