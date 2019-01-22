@@ -1,12 +1,11 @@
 import * as mocha from 'mocha';
 import chai from 'chai';
 import io from 'socket.io-client';
-
 import * as Rx from 'rxjs-compat';
 import Server from '../src/server';
 
 const { describe, it } = mocha;
-const { assert } = chai;
+const { assert, expect } = chai;
 
 describe('Connection Test', () => {
   const url = 'ws://localhost:3000';
@@ -67,5 +66,42 @@ describe('Connection Test', () => {
         client.disconnect();
         done();
       });
+  });
+
+
+  it('sice -> rice', (done) => {
+    describe('Caller should send a ICE Candidate to server '
+      + 'and Server should broadcast the ICE Candidate', () => {
+      // given
+      const caller = io.connect(url, null);
+      const callee = io.connect(url, null);
+      const roomNumber = 12345;
+      caller.emit('join', roomNumber);
+      callee.emit('join', roomNumber);
+
+      const candidate = { room: roomNumber,
+        sdpMid: 'IamSDPMid',
+        sdpMLineIndex: '12345',
+        candidate: 'candidate:1234567890 1 udp 0987654321 192.168.0.1' };
+      const observable = Rx.Observable
+        .fromEvent(callee, 'rice')
+        .first();
+
+      // when
+      caller.emit('sice', candidate);
+
+      // then
+      observable.subscribe((data) => {
+        expect(data).to.eql(candidate);
+      },
+      (err) => {
+        assert.fail(err);
+      })
+        .add(() => {
+          caller.disconnect();
+          callee.disconnect();
+          done();
+        });
+    });
   });
 });
