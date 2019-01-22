@@ -7,6 +7,13 @@ const addEventListeners = (socket) => {
   socket.on('dial', () => {
     socket.emit('created', 'created success');
   });
+  socket.on('sice', (candidate) => {
+    socket.broadcast.to(candidate.room).emit('rice', candidate);
+  });
+  // Because I developed sice and rice without accept, I added this handler temporary
+  socket.on('join', (room) => {
+    socket.join(room);
+  });
 };
 
 class Server {
