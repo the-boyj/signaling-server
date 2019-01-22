@@ -1,8 +1,9 @@
-import express from 'express';
-import http from 'http';
-import SocketIO from 'socket.io';
+import listen from 'socket.io';
 
 const addEventListeners = (socket) => {
+  socket.on('echo', (data) => {
+    socket.emit('echo', data);
+  });
   socket.on('dial', () => {
     socket.emit('created', 'created success');
   });
@@ -10,25 +11,19 @@ const addEventListeners = (socket) => {
 
 class Server {
   constructor() {
-    this.app = express();
-    this.server = http.createServer(this.app);
-    this.io = new SocketIO(this.server);
-    this.port = 80;
+    this.io = listen(null, {});
+    this.port = 3000;
   }
 
   start() {
-    this.server.listen(this.port);
+    this.io.on('connection', addEventListeners);
+    this.io.listen(this.port);
+    console.log(`server started at port ${this.port}`);
+    return this.io;
+  }
 
-    // echo
-    this.app.get('/echo', (req, res) => {
-      res.send(req.query.msg);
-    });
-
-    this.io.on('connection', (socket) => {
-      addEventListeners(socket);
-    });
-
-    return Promise.resolve(this);
+  close() {
+    this.io.close();
   }
 }
 
