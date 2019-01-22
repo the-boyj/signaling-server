@@ -25,9 +25,9 @@
  */
 import * as common from './common';
 
-const isValidHandler = handlers => key => key !== 'default' && typeof handlers[key] === 'function';
+export const isValidHandler = handlers => key => key !== 'default' && typeof handlers[key] === 'function';
 
-const getHandler = handlers => key => ({ name: key, handler: handlers[key] });
+export const getHandler = handlers => key => ({ name: key, handler: handlers[key] });
 
 // Write new handler module here.
 export default
