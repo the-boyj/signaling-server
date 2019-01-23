@@ -2,7 +2,7 @@ import * as mocha from 'mocha';
 import chai from 'chai';
 import io from 'socket.io-client';
 import * as Rx from 'rxjs-compat';
-import Server from '../src/server';
+import Server from '../../src/server';
 
 const { describe, it } = mocha;
 const { assert, expect } = chai;
@@ -19,54 +19,6 @@ describe('Connection Test', () => {
   afterEach((done) => {
     server.close();
     done();
-  });
-
-  it('should echo hello', (done) => {
-    // given
-    const client = io.connect(url, null);
-    const echoObservable = Rx.Observable
-      .fromEvent(client, 'echo')
-      .first();
-
-    // when
-    client.emit('echo', 'hello');
-
-    // then
-    echoObservable
-      .subscribe((data) => {
-        assert.equal(data, 'hello');
-      },
-      (err) => {
-        assert.fail(err);
-      })
-      .add(() => {
-        client.disconnect();
-        done();
-      });
-  });
-
-  it('A user should be responded "created" to "dial"', (done) => {
-    // given
-    const client = io.connect(url, null);
-    const createdObservable = Rx.Observable
-      .fromEvent(client, 'created')
-      .first();
-
-    // when
-    client.emit('dial');
-
-    // then
-    createdObservable
-      .subscribe((data) => {
-        assert.equal(data, 'created success');
-      },
-      (err) => {
-        assert.fail(err);
-      })
-      .add(() => {
-        client.disconnect();
-        done();
-      });
   });
 
   describe('sice tests', () => {
@@ -103,10 +55,12 @@ describe('Connection Test', () => {
         caller.emit('dial', anyToken);
         callee.emit('accept', anyToken);
 
-        const candidate = { deviceToken: anyToken,
+        const candidate = {
+          deviceToken: anyToken,
           sdpMid: 'IamSDPMid',
           sdpMLineIndex: '12345',
-          candidate: 'candidate:1234567890 1 udp 0987654321 192.168.0.1' };
+          candidate: 'candidate:1234567890 1 udp 0987654321 192.168.0.1',
+        };
         const riceObservable = Rx.Observable
           .fromEvent(callee, 'rice')
           .first();
