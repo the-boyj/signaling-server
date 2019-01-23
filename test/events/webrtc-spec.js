@@ -55,10 +55,12 @@ describe('Connection Test', () => {
         caller.emit('dial', anyToken);
         callee.emit('accept', anyToken);
 
-        const candidate = { deviceToken: anyToken,
+        const candidate = {
+          deviceToken: anyToken,
           sdpMid: 'IamSDPMid',
           sdpMLineIndex: '12345',
-          candidate: 'candidate:1234567890 1 udp 0987654321 192.168.0.1' };
+          candidate: 'candidate:1234567890 1 udp 0987654321 192.168.0.1',
+        };
         const riceObservable = Rx.Observable
           .fromEvent(callee, 'rice')
           .first();

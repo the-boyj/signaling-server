@@ -9,11 +9,13 @@ const { expect } = chai;
 describe('Tests for invalidHandler()', () => {
   it('should pass functions except default', (done) => {
     // given
-    const properties = { default: () => {},
+    const properties = {
+      default: () => {},
       func1: () => {},
       func2: () => {},
       prop1: 'abc',
-      prop2: '1234' };
+      prop2: '1234',
+    };
 
     // when
     const validProperties = Object.keys(properties)
@@ -29,11 +31,13 @@ describe('Tests for invalidHandler()', () => {
 describe('Tests for getHandler()', () => {
   it('should get only functions except default', (done) => {
     // given
-    const properties = { default: () => {},
+    const properties = {
+      default: () => {},
       func1: () => {},
       func2: () => {},
       prop1: 'abc',
-      prop2: '1234' };
+      prop2: '1234',
+    };
 
     // when
     const validProperties = Object.keys(properties)
