@@ -2,7 +2,7 @@ import * as mocha from 'mocha';
 import chai from 'chai';
 import io from 'socket.io-client';
 import * as Rx from 'rxjs-compat';
-import Server from '../src/server';
+import Server from '../../src/server';
 
 const { describe, it } = mocha;
 const { assert, expect } = chai;
