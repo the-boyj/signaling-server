@@ -24,6 +24,8 @@
    and handler function will used in event callback function.
  */
 import * as common from './common';
+import * as call from './call';
+import * as webrtc from './webrtc';
 
 export const isValidHandler = handlers => key => key !== 'default' && typeof handlers[key] === 'function';
 
@@ -31,7 +33,7 @@ export const getHandler = handlers => key => ({ name: key, handler: handlers[key
 
 // Write new handler module here.
 export default
-[common]
+[common, call, webrtc]
   .flatMap(handlers => Object.keys(handlers)
     .filter(isValidHandler(handlers))
     .map(getHandler(handlers)));

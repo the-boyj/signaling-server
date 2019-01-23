@@ -3,9 +3,5 @@ const echo = socket => (data) => {
   socket.emit('echo', data);
 };
 
-const dial = socket => () => {
-  socket.emit('created', 'created success');
-};
-
 // module.exports must have event handlers.
-module.exports = { echo, dial };
+module.exports = { echo };
