@@ -4,15 +4,19 @@ const addEventListeners = (socket) => {
   socket.on('echo', (data) => {
     socket.emit('echo', data);
   });
-  socket.on('dial', () => {
+  socket.on('dial', (deviceToken) => {
+    socket.join(deviceToken);
     socket.emit('created', 'created success');
   });
-  socket.on('sice', (candidate) => {
-    socket.broadcast.to(candidate.room).emit('rice', candidate);
+  socket.on('accept', (deviceToken) => {
+    socket.join(deviceToken);
   });
-  // Because I developed sice and rice without accept, I added this handler temporary
-  socket.on('join', (room) => {
-    socket.join(room);
+  socket.on('sice', (candidate) => {
+    // evaluate to true if value is null, undefined, NaN, empty string, 0, false
+    if (!candidate || !candidate.deviceToken) {
+      socket.emit('peer_error', candidate.deviceToken);
+    }
+    socket.to(candidate.deviceToken).emit('rice', candidate);
   });
 };
 
