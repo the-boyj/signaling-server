@@ -1,11 +1,9 @@
 import listen from 'socket.io';
+import events from './events';
 
 const addEventListeners = (socket) => {
-  socket.on('echo', (data) => {
-    socket.emit('echo', data);
-  });
-  socket.on('dial', () => {
-    socket.emit('created', 'created success');
+  events.forEach((event) => {
+    socket.on(event.name, event.handler(socket));
   });
 };
 
