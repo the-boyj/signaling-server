@@ -21,20 +21,20 @@ describe('Connection Test', () => {
     done();
   });
 
-  it('should echo hello', (done) => {
+  it('A user should be responded "created" to "dial"', (done) => {
     // given
     const client = io.connect(url, null);
-    const echoObservable = Rx.Observable
-      .fromEvent(client, 'echo')
+    const createdObservable = Rx.Observable
+      .fromEvent(client, 'created')
       .first();
 
     // when
-    client.emit('echo', 'hello');
+    client.emit('dial');
 
     // then
-    echoObservable
+    createdObservable
       .subscribe((data) => {
-        assert.equal(data, 'hello');
+        assert.equal(data, 'created success');
       },
       (err) => {
         assert.fail(err);
