@@ -22,7 +22,7 @@ describe('Tests for invalidHandler()', () => {
       .filter(isValidHandler(properties));
 
     // then
-    expect(properties).to.have.all.keys('default', 'func1', 'func2', 'prop1', 'prop2');
+    expect(properties).to.all.keys('default', 'func1', 'func2', 'prop1', 'prop2');
     expect(validProperties).to.eql(['func1', 'func2']);
     done();
   });
@@ -48,7 +48,7 @@ describe('Tests for getHandler()', () => {
       { name: 'func2', handler: properties.func2 }];
 
     // then
-    expect(properties).to.have.all.keys('default', 'func1', 'func2', 'prop1', 'prop2');
+    expect(properties).to.all.keys('default', 'func1', 'func2', 'prop1', 'prop2');
     expect(validProperties).to.eql(expected);
     done();
   });

@@ -1,47 +1,44 @@
-import * as mocha from 'mocha';
 import chai from 'chai';
-import io from 'socket.io-client';
-import * as Rx from 'rxjs-compat';
-import Server from '../../src/server';
+import MockedSocket from 'socket.io-mock';
+import * as mocha from 'mocha';
+import * as call from '../../src/events/call';
 
 const { describe, it } = mocha;
 const { assert } = chai;
 
-describe('Connection Test', () => {
-  const url = 'ws://localhost:3000';
-  const server = new Server();
-
+describe('Call Test', () => {
+  let mockedServer = null;
   beforeEach((done) => {
-    server.start();
+    mockedServer = new MockedSocket();
     done();
   });
-
-  afterEach((done) => {
-    server.close();
-    done();
-  });
-
-  it('A user should be responded "created" to "dial"', (done) => {
-    // given
-    const client = io.connect(url, null);
-    const createdObservable = Rx.Observable
-      .fromEvent(client, 'created')
-      .first();
-
-    // when
-    client.emit('dial');
-
-    // then
-    createdObservable
-      .subscribe((data) => {
-        assert.equal(data, 'created success');
-      },
-      (err) => {
-        assert.fail(err);
-      })
-      .add(() => {
-        client.disconnect();
+  describe('Dial Test', () => {
+    it('should get "created success" after dial', (done) => {
+      // given
+      const successMessage = 'created success';
+      const mockedClient = mockedServer.socketClient;
+      // then
+      mockedClient.on('created', (data) => {
+        assert.equal(data, successMessage);
         done();
       });
+      // when
+      call.dial(mockedServer)();
+    });
+  });
+
+  // this test are following below site
+  // https://github.com/SupremeTechnopriest/socket.io-mock/blob/84208bf1434e6fdc92c3904b92f97eb273c08eed/test/test-socket.js
+  describe('Accept Test', () => {
+    it('should join the room', (done) => {
+      // given
+      const roomNumber = '12345';
+      // when
+      call.accept(mockedServer)(roomNumber);
+      // then
+      // first room has index as 0
+      assert.equal(mockedServer.rooms[0], roomNumber);
+      done();
+    });
   });
 });

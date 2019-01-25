@@ -1,3 +1,5 @@
+// ssdp, rsdp, rice, sice
+
 const sice = socket => (candidate) => {
   // evaluate to true if value is null, undefined, NaN, empty string, 0, false
   if (!candidate || !candidate.deviceToken) {

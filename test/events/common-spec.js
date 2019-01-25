@@ -1,47 +1,25 @@
-import * as mocha from 'mocha';
 import chai from 'chai';
-import io from 'socket.io-client';
-import * as Rx from 'rxjs-compat';
-import Server from '../../src/server';
+import MockedSocket from 'socket.io-mock';
+import * as mocha from 'mocha';
+import * as common from '../../src/events/common';
 
 const { describe, it } = mocha;
 const { assert } = chai;
-
-describe('Connection Test', () => {
-  const url = 'ws://localhost:3000';
-  const server = new Server();
-
-  beforeEach((done) => {
-    server.start();
-    done();
-  });
-
-  afterEach((done) => {
-    server.close();
-    done();
-  });
-
-  it('should echo hello', (done) => {
-    // given
-    const client = io.connect(url, null);
-    const echoObservable = Rx.Observable
-      .fromEvent(client, 'echo')
-      .first();
-
-    // when
-    client.emit('echo', 'hello');
-
-    // then
-    echoObservable
-      .subscribe((data) => {
-        assert.equal(data, 'hello');
-      },
-      (err) => {
-        assert.fail(err);
-      })
-      .add(() => {
-        client.disconnect();
+describe('Common Test', () => {
+  describe('Echo Test', () => {
+    it('should echo received string', (done) => {
+      // given
+      const anyString = 'hello';
+      const mockedServer = new MockedSocket();
+      const mockedClient = mockedServer.socketClient;
+      // then
+      mockedClient.on('echo', (echoString) => {
+        assert.equal(echoString, anyString);
         done();
       });
+      // when
+      common.echo(mockedServer)(anyString);
+    });
   });
-});
+
+})
