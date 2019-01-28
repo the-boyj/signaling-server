@@ -27,7 +27,7 @@ describe('Call Test', () => {
       const eventName = 'peer_error';
       invalids.forEach((data, index) => {
         // when
-        call.dial(receiver)(data);
+        call.dial()(receiver)(data);
         // then
         assert.equal(receiver.messageBox.length, index + 1);
         assert.equal(receiver.messageBox[index].eventName, eventName);
@@ -49,7 +49,7 @@ describe('Call Test', () => {
       const eventName = 'created';
       const data = { room: roomNumber };
       // when
-      call.dial(receiver)(data);
+      call.dial()(receiver)(data);
       // then
       assert.equal(receiver.messageBox.length, 1);
       assert.equal(receiver.messageBox[0].eventName, eventName);
@@ -69,7 +69,7 @@ describe('Call Test', () => {
       };
       const roomNumber = '12345';
       // when
-      call.accept(receiver)(roomNumber);
+      call.accept()(receiver)(roomNumber);
       // then
       assert.equal(receiver.messageBox.length, 1);
       assert.equal(receiver.messageBox[0], roomNumber);
