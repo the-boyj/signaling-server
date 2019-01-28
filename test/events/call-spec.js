@@ -47,9 +47,7 @@ describe('Call Test', () => {
       };
       const roomNumber = '12345';
       const eventName = 'created';
-      const data = {
-        room: roomNumber,
-      };
+      const data = { room: roomNumber };
       // when
       call.dial(receiver)(data);
       // then
