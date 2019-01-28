@@ -5,7 +5,7 @@ const sice = () => socket => (candidate) => {
   if (isValidCandidate(candidate)) {
     socket.to(candidate.deviceToken).emit('rice', candidate);
   } else {
-    socket.emit('peer_error', candidate);
+    socket.emit('serverError', candidate);
   }
 };
 

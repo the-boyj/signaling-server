@@ -70,3 +70,75 @@ describe('echo()', () => {
     done();
   });
 });
+
+describe('serverError()', () => {
+  it('should emit serverError', (done) => {
+    // given
+    const receiver = {
+      messageBox: [],
+      emit: (eventName, message) => {
+        const msg = { eventName, message };
+        receiver.messageBox.push(msg);
+      },
+    };
+    const eventName = 'serverError';
+    const message = 'message';
+
+    // when
+    common.serverError()(receiver)(message);
+
+    // then
+    assert.equal(receiver.messageBox.length, 1);
+    assert.equal(receiver.messageBox[0].eventName, eventName);
+    assert.equal(receiver.messageBox[0].message, message);
+    done();
+  });
+});
+
+describe('peerError()', () => {
+  it('should emit peerError', (done) => {
+    // given
+    const receiver = {
+      messageBox: [],
+      emit: (eventName, message) => {
+        const msg = { eventName, message };
+        receiver.messageBox.push(msg);
+      },
+    };
+    const eventName = 'peerError';
+    const message = 'message';
+
+    // when
+    common.peerError()(receiver)(message);
+
+    // then
+    assert.equal(receiver.messageBox.length, 1);
+    assert.equal(receiver.messageBox[0].eventName, eventName);
+    assert.equal(receiver.messageBox[0].message, message);
+    done();
+  });
+});
+
+describe('log()', () => {
+  it('should emit log', (done) => {
+    // given
+    const receiver = {
+      messageBox: [],
+      emit: (eventName, message) => {
+        const msg = { eventName, message };
+        receiver.messageBox.push(msg);
+      },
+    };
+    const eventName = 'log';
+    const message = 'message';
+
+    // when
+    common.log()(receiver)(message);
+
+    // then
+    assert.equal(receiver.messageBox.length, 1);
+    assert.equal(receiver.messageBox[0].eventName, eventName);
+    assert.equal(receiver.messageBox[0].message, message);
+    done();
+  });
+});

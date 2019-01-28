@@ -7,7 +7,7 @@ const { assert } = chai;
 
 describe('Call Test', () => {
   describe('Dial Test', () => {
-    it('should emit peer_error after receiving invalid data', (done) => {
+    it('should emit serverError after receiving invalid data', (done) => {
       // given
       const receiver = {
         messageBox: [],
@@ -24,7 +24,7 @@ describe('Call Test', () => {
         { room: undefined },
         { room: '' },
       ];
-      const eventName = 'peer_error';
+      const eventName = 'serverError';
       invalids.forEach((data, index) => {
         // when
         call.dial()(receiver)(data);

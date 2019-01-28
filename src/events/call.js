@@ -5,7 +5,7 @@ const dial = () => socket => (data) => {
   if (isValidData(data)) {
     socket.emit('created', data);
   } else {
-    socket.emit('peer_error', data);
+    socket.emit('serverError', data);
   }
 };
 

@@ -7,7 +7,7 @@ const { assert } = chai;
 
 describe('Sice Test', () => {
   describe('Sice Error Test', () => {
-    it('should emit "peer_error" when candidate is invalid', (done) => {
+    it('should emit "serverError" when candidate is invalid', (done) => {
       // given
       const receiver = {
         messageBox: [],
@@ -25,7 +25,7 @@ describe('Sice Test', () => {
         { deviceToken: undefined },
         { sdpMid: 'sdpMid' }, // deviceToken undefined
       ];
-      const eventName = 'peer_error';
+      const eventName = 'serverError';
 
       invalids.forEach((candidate, index) => {
         // when
