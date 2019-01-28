@@ -1,9 +1,12 @@
+// evaluate to true if it is not null, undefined, NaN, empty string, 0, false
+const isValidCandidate = candidate => candidate && candidate.deviceToken;
+
 const sice = socket => (candidate) => {
-  // evaluate to true if value is null, undefined, NaN, empty string, 0, false
-  if (!candidate || !candidate.deviceToken) {
-    socket.emit('peer_error', candidate.deviceToken);
+  if (isValidCandidate(candidate)) {
+    socket.to(candidate.deviceToken).emit('rice', candidate);
+  } else {
+    socket.emit('peer_error', candidate);
   }
-  socket.to(candidate.deviceToken).emit('rice', candidate);
 };
 
 module.exports = { sice };

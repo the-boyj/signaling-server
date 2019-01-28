@@ -1,87 +1,76 @@
-import * as mocha from 'mocha';
 import chai from 'chai';
-import io from 'socket.io-client';
-import * as Rx from 'rxjs-compat';
-import Server from '../../src/server';
+import * as mocha from 'mocha';
+import * as webrtc from '../../src/events/webrtc';
 
 const { describe, it } = mocha;
-const { assert, expect } = chai;
+const { assert } = chai;
 
-describe('Connection Test', () => {
-  const url = 'ws://localhost:3000';
-  const server = new Server();
+describe('webrtc tests', () => {
+  describe('Sice Test', () => {
+    describe('Sice Error Test', () => {
+      it('should emit "peer_error" when candidate is invalid', (done) => {
+        // given
+        const receiver = {
+          messageBox: [],
+          emit: (eventName, message) => {
+            const msg = { eventName, message };
+            receiver.messageBox.push(msg);
+          },
+        };
+        const invalids = [
+          undefined,
+          null,
+          {},
+          { deviceToken: '' },
+          { deviceToken: null },
+          { deviceToken: undefined },
+          { sdpMid: 'sdpMid' }, // deviceToken undefined
+        ];
+        const eventName = 'peer_error';
 
-  beforeEach((done) => {
-    server.start();
-    done();
-  });
-
-  afterEach((done) => {
-    server.close();
-    done();
-  });
-
-  describe('sice tests', () => {
-    it('caller should send candidate without room', (done) => {
-      // given
-      const caller = io.connect(url, null);
-      const candidate = {};
-      const peerErrorObservable = Rx.Observable
-        .fromEvent(caller, 'peer_error')
-        .first();
-
-      // when
-      caller.emit('sice', candidate);
-
-      // then
-      peerErrorObservable.subscribe((data) => {
-        assert.equal(data, null);
-      }, (err) => {
-        assert.fail(err);
-      }).add(() => {
-        caller.disconnect();
+        invalids.forEach((candidate, index) => {
+          // when
+          webrtc.sice(receiver)(candidate);
+          // then
+          assert.equal(receiver.messageBox.length, index + 1);
+          assert.equal(receiver.messageBox[index].eventName, eventName);
+          assert.equal(receiver.messageBox[index].message, candidate);
+        });
         done();
       });
     });
-
-    describe('Caller should send a ICE Candidate to server '
-    + 'and Server should broadcast the ICE Candidate', () => {
-      it('sice -> rice', (done) => {
+    describe('Sice Test', () => {
       // given
-        const caller = io.connect(url, null);
-        const callee = io.connect(url, null);
-        const anyToken = 12345;
-
-        caller.emit('dial', anyToken);
-        callee.emit('accept', anyToken);
-
-        const candidate = {
-          deviceToken: anyToken,
-          sdpMid: 'IamSDPMid',
-          sdpMLineIndex: '12345',
-          candidate: 'candidate:1234567890 1 udp 0987654321 192.168.0.1',
-        };
-        const riceObservable = Rx.Observable
-          .fromEvent(callee, 'rice')
-          .first();
-
-        // when
-        caller.emit('sice', candidate);
-
-        // then
-        riceObservable
-          .subscribe((data) => {
-            expect(data).to.eql(candidate);
-          },
-          (err) => {
-            assert.fail(err);
-          })
-          .add(() => {
-            caller.disconnect();
-            callee.disconnect();
-            done();
-          });
-      });
+      const candidate = {
+        deviceToken: '12345',
+        sdpMid: 'IamSDPMid',
+        sdpMLineIndex: '12345',
+        candidate: 'candidate:1234567890 1 udp 0987654321 192.168.0.1',
+      };
+      const receiver = {
+        deviceToken: null,
+        messageBox: {},
+        to: (deviceToken) => {
+          receiver.deviceToken = deviceToken;
+          return receiver;
+        },
+        emit: (eventName, message) => {
+          const msg = { eventName, message };
+          const token = receiver.deviceToken;
+          if (!receiver.messageBox[token]) {
+            receiver.messageBox[token] = [];
+          }
+          receiver.messageBox[token].push(msg);
+        },
+      };
+      const eventName = 'rice';
+      // when
+      webrtc.sice(receiver)(candidate);
+      // then
+      const { deviceToken } = receiver;
+      assert.equal(receiver.messageBox[deviceToken].length, 1);
+      assert.equal(receiver.messageBox[deviceToken][0].eventName, eventName);
+      assert.deepEqual(receiver.messageBox[deviceToken][0].message, candidate);
     });
   });
 });
