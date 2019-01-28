@@ -1,9 +1,9 @@
 import listen from 'socket.io';
 import events from './events';
 
-const addEventListeners = (socket) => {
+const addEventListeners = io => (socket) => {
   events.forEach((event) => {
-    socket.on(event.name, event.handler(socket));
+    socket.on(event.name, event.handler(io)(socket));
   });
 };
 
@@ -14,7 +14,7 @@ class Server {
   }
 
   start() {
-    this.io.on('connection', addEventListeners);
+    this.io.on('connection', addEventListeners(this.io));
     this.io.listen(this.port);
     console.log(`server started at port ${this.port}`);
     return this.io;

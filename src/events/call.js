@@ -1,7 +1,7 @@
 // evaluate to true if it is not null, undefined, NaN, empty string, 0, false
 const isValidData = data => data && data.room;
 
-const dial = socket => (data) => {
+const dial = () => socket => (data) => {
   if (isValidData(data)) {
     socket.emit('created', data);
   } else {
@@ -9,7 +9,7 @@ const dial = socket => (data) => {
   }
 };
 
-const accept = socket => (deviceToken) => {
+const accept = () => socket => (deviceToken) => {
   socket.join(deviceToken);
 };
 
