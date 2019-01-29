@@ -1,3 +1,7 @@
+import * as uuid from 'uuid';
+
+const wm = new WeakMap();
+
 // evaluate to true if it is not null, undefined, NaN, empty string, 0, false
 const isValidData = data => data && data.room;
 
@@ -16,11 +20,14 @@ const hasFullParticipants = ({ io, room }) => getParticipantsCount({ io, room })
 const preparedToReady = ({ io, room }) => isValidData({ io, room })
   && hasFullParticipants({ io, room });
 
-const dial = () => socket => (data) => {
-  if (isValidData(data)) {
-    socket.emit('created', data);
+const dial = () => caller => ({ deviceToken }) => {
+  if (deviceToken) {
+    const room = uuid.v1();
+    caller.join(room);
+    wm.set(caller, { room });
+    // TODO: send fcm message for callee to wake up. (using room)
   } else {
-    socket.emit('peer_error', data);
+    caller.emit('serverError', { description: `Invalid device token. ${deviceToken}` });
   }
 };
 
@@ -38,11 +45,14 @@ const reject = io => () => ({ room }) => {
   io.in(room).emit('bye');
 };
 
-const defaultAwaken = canParticipate => io => socket => ({ room }) => {
+const defaultAwaken = canParticipate => io => callee => ({ room }) => {
   if (canParticipate({ io, room })) {
-    socket.join(room);
+    const caller = callee.to(room);
+    caller.emit('created');
+    callee.join(room);
+    wm.set(callee, { room });
   } else {
-    socket.emit('serverError', { description: 'Connection failed' });
+    callee.emit('serverError', { description: 'Connection failed' });
   }
 };
 
