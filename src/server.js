@@ -1,9 +1,9 @@
 import listen from 'socket.io';
 import events from './events';
 
-const addEventListeners = io => (socket) => {
+const addEventListeners = ({ io, weakMap }) => (socket) => {
   events.forEach((event) => {
-    socket.on(event.name, event.handler(io)(socket));
+    socket.on(event.name, event.handler({ io, socket, weakMap }));
   });
 };
 
@@ -14,10 +14,13 @@ class Server {
   }
 
   start() {
-    this.io.on('connection', addEventListeners(this.io));
-    this.io.listen(this.port);
+    const { io } = this;
+    const weakMap = new WeakMap();
+
+    io.on('connection', addEventListeners({ io, weakMap }));
+    io.listen(this.port);
     console.log(`server started at port ${this.port}`);
-    return this.io;
+    return io;
   }
 
   close() {

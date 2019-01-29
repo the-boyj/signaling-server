@@ -35,7 +35,7 @@ describe('Call Test', () => {
           message: { description: `Invalid device token. ${deviceToken}` },
         };
         // when
-        call.dial()(receiver)({ deviceToken });
+        call.dial({ socket: receiver })({ deviceToken });
         // then
         assert.equal(receiver.messageBox.length, index + 1);
         assert.equal(receiver.messageBox[index].eventName, eventName);
@@ -55,7 +55,7 @@ describe('Call Test', () => {
       const deviceToken = '12345';
 
       // when
-      call.dial()(receiver)({ deviceToken });
+      call.dial({ socket: receiver })({ deviceToken });
 
       // then
       assert.equal(receiver.rooms.length, 1);
@@ -83,7 +83,7 @@ describe('Call Test', () => {
       const accept = call.helper.defaultAccept(() => true);
 
       // when
-      accept(sockets)()({ room: roomName });
+      accept({ io: sockets })({ room: roomName });
 
       // then
       assert.equal(sockets.emitTargets.length, 1);
@@ -116,7 +116,7 @@ describe('Call Test', () => {
       };
 
       // when
-      accept(sockets)()({ room: roomName });
+      accept({ io: sockets })({ room: roomName });
 
       // then
       assert.equal(sockets.emitTargets.length, 1);
@@ -144,7 +144,7 @@ describe('Call Test', () => {
       const roomName = uuid.v1();
 
       // when
-      call.reject(sockets)()({ room: roomName });
+      call.reject({ io: sockets })({ room: roomName });
 
       // then
       assert.equal(sockets.emitTargets.length, 1);
@@ -176,7 +176,7 @@ describe('Call Test', () => {
       const awaken = call.helper.defaultAwaken(() => true);
 
       // when
-      awaken()(callee)({ room: roomName });
+      awaken({ socket: callee })({ room: roomName });
 
       // then
       assert.equal(callee.rooms.length, 1);
@@ -205,7 +205,7 @@ describe('Call Test', () => {
       };
 
       // when
-      awaken()(callee)({ room: roomName });
+      awaken({ socket: callee })({ room: roomName });
 
       // then
       assert.equal(callee.messageBox.length, 1);
