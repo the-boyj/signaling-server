@@ -4,13 +4,14 @@ import * as uuid from 'uuid';
 import * as call from '../../src/events/call';
 
 const { describe, it } = mocha;
-const { assert } = chai;
+const { assert, should } = chai;
 
 describe('Call Test', () => {
   describe('Dial Test', () => {
     it('should emit peer_error after receiving invalid data', (done) => {
       // given
       const receiver = {
+        rooms: [],
         messageBox: [],
         emit: (eventName, message) => {
           const msg = { eventName, message };
@@ -21,18 +22,24 @@ describe('Call Test', () => {
         undefined,
         null,
         {},
-        { room: null },
-        { room: undefined },
-        { room: '' },
+        { deviceToken: null },
+        { deviceToken: undefined },
+        { deviceToken: '' },
       ];
-      const eventName = 'peer_error';
-      invalids.forEach((data, index) => {
+      const eventName = 'serverError';
+      invalids.forEach((invalid, index) => {
+        // given
+        const deviceToken = invalid && invalid.deviceToken;
+        const expected = {
+          eventName,
+          message: { description: `Invalid device token. ${deviceToken}` },
+        };
         // when
-        call.dial()(receiver)(data);
+        call.dial()(receiver)({ deviceToken });
         // then
         assert.equal(receiver.messageBox.length, index + 1);
         assert.equal(receiver.messageBox[index].eventName, eventName);
-        assert.equal(receiver.messageBox[index].message, data);
+        assert.deepEqual(receiver.messageBox[index], expected);
       });
       done();
     });
@@ -40,21 +47,19 @@ describe('Call Test', () => {
     it('should get message after dial', (done) => {
       // given
       const receiver = {
-        messageBox: [],
-        emit: (eventName, message) => {
-          const msg = { eventName, message };
-          receiver.messageBox.push(msg);
+        rooms: [],
+        join: (room) => {
+          receiver.rooms.push(room);
         },
       };
-      const roomNumber = '12345';
-      const eventName = 'created';
-      const data = { room: roomNumber };
+      const deviceToken = '12345';
+
       // when
-      call.dial()(receiver)(data);
+      call.dial()(receiver)({ deviceToken });
+
       // then
-      assert.equal(receiver.messageBox.length, 1);
-      assert.equal(receiver.messageBox[0].eventName, eventName);
-      assert.equal(receiver.messageBox[0].message, data);
+      assert.equal(receiver.rooms.length, 1);
+      should().exist(receiver.rooms[0]);
       done();
     });
   });
@@ -153,11 +158,18 @@ describe('Call Test', () => {
   describe('Awaken Test', () => {
     it('should join when it is waiting callee', (done) => {
       // given
+      const caller = {
+        messageBox: [],
+        emit: (eventName) => {
+          caller.messageBox.push(eventName);
+        },
+      };
       const callee = {
         rooms: [],
         join: (room) => {
           callee.rooms.push(room);
         },
+        to: () => caller,
       };
       const roomName = uuid.v1();
       // Counter part is waiting callee.
@@ -169,6 +181,9 @@ describe('Call Test', () => {
       // then
       assert.equal(callee.rooms.length, 1);
       assert.equal(callee.rooms[0], roomName);
+      assert.equal(caller.messageBox.length, 1);
+      assert.equal(caller.messageBox[0], 'created');
+
       done();
     });
 
