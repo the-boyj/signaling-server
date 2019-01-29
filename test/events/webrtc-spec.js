@@ -29,7 +29,7 @@ describe('Sice Test', () => {
 
       invalids.forEach((candidate, index) => {
         // when
-        webrtc.sice()(receiver)(candidate);
+        webrtc.sice({ socket: receiver })(candidate);
         // then
         assert.equal(receiver.messageBox.length, index + 1);
         assert.equal(receiver.messageBox[index].eventName, eventName);
@@ -64,7 +64,7 @@ describe('Sice Test', () => {
     };
     const eventName = 'rice';
     // when
-    webrtc.sice()(receiver)(candidate);
+    webrtc.sice({ socket: receiver })(candidate);
     // then
     const { deviceToken } = receiver;
     assert.equal(receiver.messageBox[deviceToken].length, 1);
