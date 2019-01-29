@@ -17,7 +17,7 @@ const isWaitingCallee = ({ io, room }) => getParticipantsCount({ io, room }) ===
 // If the number of participants in the room is 2, this room has fully participants.
 const hasFullParticipants = ({ io, room }) => getParticipantsCount({ io, room }) === 2;
 
-const preparedToReady = ({ io, room }) => isValidData({ io, room })
+const preparedToRtcCall = ({ io, room }) => isValidData({ io, room })
   && hasFullParticipants({ io, room });
 
 const dial = () => caller => ({ deviceToken }) => {
@@ -29,20 +29,6 @@ const dial = () => caller => ({ deviceToken }) => {
   } else {
     caller.emit('serverError', { description: `Invalid device token. ${deviceToken}` });
   }
-};
-
-const defaultAccept = canBeReady => io => () => ({ room }) => {
-  if (canBeReady({ io, room })) {
-    io.in(room).emit('ready');
-  } else {
-    io.in(room).emit('serverError', { description: 'Connection failed' });
-  }
-};
-
-const accept = defaultAccept(preparedToReady);
-
-const reject = io => () => ({ room }) => {
-  io.in(room).emit('bye');
 };
 
 const defaultAwaken = canParticipate => io => callee => ({ room }) => {
@@ -58,6 +44,20 @@ const defaultAwaken = canParticipate => io => callee => ({ room }) => {
 
 const awaken = defaultAwaken(isWaitingCallee);
 
-const helper = { defaultAwaken, defaultAccept, isWaitingCallee, preparedToReady };
+const defaultAccept = canBeReady => io => () => ({ room }) => {
+  if (canBeReady({ io, room })) {
+    io.in(room).emit('ready');
+  } else {
+    io.in(room).emit('serverError', { description: 'Connection failed' });
+  }
+};
 
-module.exports = { helper, dial, accept, reject, awaken };
+const accept = defaultAccept(preparedToRtcCall);
+
+const reject = io => () => ({ room }) => {
+  io.in(room).emit('bye');
+};
+
+const helper = { defaultAwaken, defaultAccept };
+
+module.exports = { helper, dial, awaken, accept, reject };
