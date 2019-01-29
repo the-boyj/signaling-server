@@ -20,7 +20,7 @@ const hasFullParticipants = ({ io, room }) => getParticipantsCount({ io, room })
 const preparedToRtcCall = ({ io, room }) => isValidData({ io, room })
   && hasFullParticipants({ io, room });
 
-const dial = () => caller => ({ deviceToken }) => {
+const dial = ({ socket: caller }) => ({ deviceToken }) => {
   if (deviceToken) {
     const room = uuid.v1();
     caller.join(room);
@@ -31,7 +31,7 @@ const dial = () => caller => ({ deviceToken }) => {
   }
 };
 
-const defaultAwaken = canParticipate => io => callee => ({ room }) => {
+const defaultAwaken = canParticipate => ({ io, socket: callee }) => ({ room }) => {
   if (canParticipate({ io, room })) {
     const caller = callee.to(room);
     caller.emit('created');
@@ -44,7 +44,7 @@ const defaultAwaken = canParticipate => io => callee => ({ room }) => {
 
 const awaken = defaultAwaken(isWaitingCallee);
 
-const defaultAccept = canBeReady => io => () => ({ room }) => {
+const defaultAccept = canBeReady => ({ io }) => ({ room }) => {
   if (canBeReady({ io, room })) {
     io.in(room).emit('ready');
   } else {
@@ -54,7 +54,7 @@ const defaultAccept = canBeReady => io => () => ({ room }) => {
 
 const accept = defaultAccept(preparedToRtcCall);
 
-const reject = io => () => ({ room }) => {
+const reject = ({ io }) => ({ room }) => {
   io.in(room).emit('bye');
 };
 
