@@ -1,7 +1,5 @@
 import * as uuid from 'uuid';
 
-const wm = new WeakMap();
-
 // evaluate to true if it is not null, undefined, NaN, empty string, 0, false
 const isValidData = data => data && data.room;
 
@@ -20,23 +18,25 @@ const hasFullParticipants = ({ io, room }) => getParticipantsCount({ io, room })
 const preparedToRtcCall = ({ io, room }) => isValidData({ io, room })
   && hasFullParticipants({ io, room });
 
-const dial = ({ socket: caller }) => ({ deviceToken }) => {
+const dial = ({ socket: caller, weakMap }) => ({ deviceToken }) => {
   if (deviceToken) {
     const room = uuid.v1();
     caller.join(room);
-    wm.set(caller, { room });
+    weakMap.set(caller, { room });
     // TODO: send fcm message for callee to wake up. (using room)
   } else {
     caller.emit('serverError', { description: `Invalid device token. ${deviceToken}` });
   }
 };
 
-const defaultAwaken = canParticipate => ({ io, socket: callee }) => ({ room }) => {
+const defaultAwaken = canParticipate => ({
+  io, socket: callee, weakMap,
+}) => ({ room }) => {
   if (canParticipate({ io, room })) {
     const caller = callee.to(room);
     caller.emit('created');
     callee.join(room);
-    wm.set(callee, { room });
+    weakMap.set(callee, { room });
   } else {
     callee.emit('serverError', { description: 'Connection failed' });
   }
@@ -44,7 +44,10 @@ const defaultAwaken = canParticipate => ({ io, socket: callee }) => ({ room }) =
 
 const awaken = defaultAwaken(isWaitingCallee);
 
-const defaultAccept = canBeReady => ({ io }) => ({ room }) => {
+const defaultAccept = canBeReady => ({
+  io, socket: callee, weakMap,
+}) => () => {
+  const { room } = weakMap.get(callee);
   if (canBeReady({ io, room })) {
     io.in(room).emit('ready');
   } else {
@@ -54,7 +57,10 @@ const defaultAccept = canBeReady => ({ io }) => ({ room }) => {
 
 const accept = defaultAccept(preparedToRtcCall);
 
-const reject = ({ io }) => ({ room }) => {
+const reject = ({
+  io, socket: callee, weakMap,
+}) => () => {
+  const { room } = weakMap.get(callee);
   io.in(room).emit('bye');
 };
 
