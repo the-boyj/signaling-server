@@ -13,4 +13,21 @@ const accept = () => socket => (deviceToken) => {
   socket.join(deviceToken);
 };
 
-module.exports = { dial, accept };
+const defaultAwaken = isWaitingCallee => io => socket => ({ room }) => {
+  if (isWaitingCallee({ io, room })) {
+    socket.join(room);
+  } else {
+    socket.emit('serverError', { description: 'Connection failed' });
+  }
+};
+
+const isWaitingCallee = ({ io, room }) => {
+  const clients = io.sockets.adapter.rooms[room];
+  return !!(clients && Object.keys(clients.sockets).length === 1);
+};
+
+const awaken = defaultAwaken(isWaitingCallee);
+
+const helper = { defaultAwaken, isWaitingCallee };
+
+module.exports = { helper, dial, accept, awaken };
