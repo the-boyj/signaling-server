@@ -60,20 +60,92 @@ describe('Call Test', () => {
   });
 
   describe('Accept Test', () => {
-    it('should join the room', (done) => {
+    it('should ready for calling if they can', (done) => {
       // given
-      const receiver = {
+      const sockets = {
+        emitTargets: [],
         messageBox: [],
-        join: (deviceToken) => {
-          receiver.messageBox.push(deviceToken);
+        in: (room) => {
+          sockets.emitTargets.push(room);
+          return sockets;
+        },
+        emit: (eventName) => {
+          sockets.messageBox.push(eventName);
         },
       };
-      const roomNumber = '12345';
+      const roomName = uuid.v1();
+      // The callee can be ready for calling.
+      const accept = call.helper.defaultAccept(() => true);
+
       // when
-      call.accept()(receiver)(roomNumber);
+      accept(sockets)()({ room: roomName });
+
       // then
-      assert.equal(receiver.messageBox.length, 1);
-      assert.equal(receiver.messageBox[0], roomNumber);
+      assert.equal(sockets.emitTargets.length, 1);
+      assert.equal(sockets.emitTargets[0], roomName);
+      assert.equal(sockets.messageBox.length, 1);
+      assert.equal(sockets.messageBox[0], 'ready');
+      done();
+    });
+
+    it('should not ready for calling if they cannot', (done) => {
+      // given
+      const sockets = {
+        emitTargets: [],
+        messageBox: [],
+        in: (room) => {
+          sockets.emitTargets.push(room);
+          return sockets;
+        },
+        emit: (eventName, message) => {
+          const msg = { eventName, message };
+          sockets.messageBox.push(msg);
+        },
+      };
+      const roomName = uuid.v1();
+      // They cannot be ready for calling yet.
+      const accept = call.helper.defaultAccept(() => false);
+      const expected = {
+        eventName: 'serverError',
+        message: { description: 'Connection failed' },
+      };
+
+      // when
+      accept(sockets)()({ room: roomName });
+
+      // then
+      assert.equal(sockets.emitTargets.length, 1);
+      assert.equal(sockets.emitTargets[0], roomName);
+      assert.equal(sockets.messageBox.length, 1);
+      assert.deepEqual(sockets.messageBox[0], expected);
+      done();
+    });
+  });
+
+  describe('Reject()', () => {
+    it('should get bye when they try to reject', (done) => {
+      // given
+      const sockets = {
+        emitTargets: [],
+        messageBox: [],
+        in: (room) => {
+          sockets.emitTargets.push(room);
+          return sockets;
+        },
+        emit: (eventName) => {
+          sockets.messageBox.push(eventName);
+        },
+      };
+      const roomName = uuid.v1();
+
+      // when
+      call.reject(sockets)()({ room: roomName });
+
+      // then
+      assert.equal(sockets.emitTargets.length, 1);
+      assert.equal(sockets.emitTargets[0], roomName);
+      assert.equal(sockets.messageBox.length, 1);
+      assert.equal(sockets.messageBox[0], 'bye');
       done();
     });
   });
