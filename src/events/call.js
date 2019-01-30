@@ -39,6 +39,7 @@ const defaultAwaken = canParticipate => ({
     caller.emit('created');
     callee.join(room);
     weakMap.set(callee, { room });
+    callee.emit('knock');
   } else {
     callee.emit('serverError', { description: 'Connection failed' });
   }

@@ -156,10 +156,14 @@ describe('Call Test', () => {
       };
       const callee = {
         rooms: [],
+        messageBox: [],
         join: (room) => {
           callee.rooms.push(room);
         },
         to: () => caller,
+        emit: (eventName) => {
+          callee.messageBox.push(eventName);
+        },
       };
       const weakMap = new Map();
       const roomName = uuid.v1();
@@ -172,6 +176,8 @@ describe('Call Test', () => {
       // then
       assert.equal(callee.rooms.length, 1);
       assert.equal(callee.rooms[0], roomName);
+      assert.equal(callee.messageBox.length, 1);
+      assert.equal(callee.messageBox[0], 'knock');
       assert.equal(caller.messageBox.length, 1);
       assert.equal(caller.messageBox[0], 'created');
       assert.equal(weakMap.get(callee).room, roomName);
