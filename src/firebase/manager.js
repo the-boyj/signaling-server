@@ -2,6 +2,7 @@ import * as firebaseAdmin from 'firebase-admin';
 import * as firebaseError from 'firebase-admin/lib/utils/error';
 import serviceAccount from '../../resource/firebase-key';
 import * as messageMaker from './message-maker';
+import 'babel-polyfill';
 
 const databaseUrl = 'https://boyj-17019.firebaseio.com';
 const { FirebaseMessagingError } = firebaseError;
