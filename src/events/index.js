@@ -32,8 +32,13 @@ export const isValidHandler = handlers => key => key !== 'default' && typeof han
 export const getHandler = handlers => key => ({ name: key, handler: handlers[key] });
 
 // Write new handler module here.
-export default
+const events = [];
 [common, call, webrtc]
-  .flatMap(handlers => Object.keys(handlers)
+  .forEach(handlers => Object.keys(handlers)
     .filter(isValidHandler(handlers))
-    .map(getHandler(handlers)));
+    .map(getHandler(handlers))
+    .forEach((handler) => {
+      events.push(handler);
+    }));
+
+export default events;
