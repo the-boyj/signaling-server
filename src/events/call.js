@@ -1,4 +1,5 @@
 import * as uuid from 'uuid';
+import * as manager from '../firebase/manager';
 
 const wm = new WeakMap();
 
@@ -25,7 +26,7 @@ const dial = () => caller => ({ deviceToken }) => {
     const room = uuid.v1();
     caller.join(room);
     wm.set(caller, { room });
-    // TODO: send fcm message for callee to wake up. (using room)
+    manager.send({ data: { room }, token: deviceToken });
   } else {
     caller.emit('serverError', { description: `Invalid device token. ${deviceToken}` });
   }

@@ -4,7 +4,7 @@ import * as uuid from 'uuid';
 import * as call from '../../src/events/call';
 
 const { describe, it } = mocha;
-const { assert, should } = chai;
+const { assert } = chai;
 
 describe('Call Test', () => {
   describe('Dial Test', () => {
@@ -41,25 +41,6 @@ describe('Call Test', () => {
         assert.equal(receiver.messageBox[index].eventName, eventName);
         assert.deepEqual(receiver.messageBox[index], expected);
       });
-      done();
-    });
-
-    it('should get message after dial', (done) => {
-      // given
-      const receiver = {
-        rooms: [],
-        join: (room) => {
-          receiver.rooms.push(room);
-        },
-      };
-      const deviceToken = '12345';
-
-      // when
-      call.dial()(receiver)({ deviceToken });
-
-      // then
-      assert.equal(receiver.rooms.length, 1);
-      should().exist(receiver.rooms[0]);
       done();
     });
   });
