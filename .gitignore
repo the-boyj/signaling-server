@@ -5,3 +5,4 @@ bin/
 # jetbrains IDE
 .idea/
 *.iml
+firebase-key.json

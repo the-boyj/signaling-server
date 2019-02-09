@@ -4,11 +4,11 @@ import * as uuid from 'uuid';
 import * as call from '../../src/events/call';
 
 const { describe, it } = mocha;
-const { assert, should } = chai;
+const { assert } = chai;
 
 describe('Call Test', () => {
   describe('Dial Test', () => {
-    it('should emit peer_error after receiving invalid data', (done) => {
+    it('should emit serverError after receiving empty data', (done) => {
       // given
       const receiver = {
         rooms: [],
@@ -41,30 +41,6 @@ describe('Call Test', () => {
         assert.equal(receiver.messageBox[index].eventName, eventName);
         assert.deepEqual(receiver.messageBox[index], expected);
       });
-      done();
-    });
-
-    it('should get message after dial', (done) => {
-      // given
-      const receiver = {
-        rooms: [],
-        join: (room) => {
-          receiver.rooms.push(room);
-        },
-      };
-      const weakMap = new Map();
-      const deviceToken = '12345';
-
-      // when
-      call.dial({ socket: receiver, weakMap })({ deviceToken });
-
-      // then
-      assert.equal(receiver.rooms.length, 1);
-      should().exist(receiver.rooms[0]);
-
-      const { room } = weakMap.get(receiver);
-      assert.equal(receiver.rooms[0], room);
-
       done();
     });
   });
