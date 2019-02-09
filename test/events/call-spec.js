@@ -8,7 +8,7 @@ const { assert } = chai;
 
 describe('Call Test', () => {
   describe('Dial Test', () => {
-    it('should emit peer_error after receiving invalid data', (done) => {
+    it('should emit serverError after receiving empty data', (done) => {
       // given
       const receiver = {
         rooms: [],

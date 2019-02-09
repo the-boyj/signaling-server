@@ -1,5 +1,6 @@
 import * as uuid from 'uuid';
 import * as manager from '../firebase/manager';
+import * as messageMaker from '../firebase/message-maker';
 
 // evaluate to true if it is not null, undefined, NaN, empty string, 0, false
 const isValidData = data => data && data.room;
@@ -20,12 +21,20 @@ const preparedToRtcCall = ({ io, room }) => isValidData({ io, room })
   && hasFullParticipants({ io, room });
 
 const dial = ({ socket: caller, weakMap }) => ({ deviceToken }) => {
-  if (deviceToken) {
+  if (isValidData(deviceToken)) {
     const room = uuid.v1();
     caller.join(room);
     weakMap.set(caller, { room });
-    manager.send({ data: { room }, token: deviceToken });
-    // TODO: send fcm message for callee to wake up. (using room)
+    const msg = messageMaker.makeMessage({ room, priority: 'high', deviceToken });
+    manager
+      .send(manager.firebaseManager, msg)
+      .then((response) => {
+        console.log('Successfully sent message:', response);
+      })
+      .catch((error) => {
+        caller.emit('serverError', { description: error.message });
+        throw error;
+      });
   } else {
     caller.emit('serverError', { description: `Invalid device token. ${deviceToken}` });
   }
