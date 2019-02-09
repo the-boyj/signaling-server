@@ -1,6 +1,5 @@
 import * as uuid from 'uuid';
 import * as manager from '../firebase/manager';
-import * as messageMaker from '../firebase/message-maker';
 
 // evaluate to true if it is not null, undefined, NaN, empty string, 0, false
 const isValidData = data => data && data.room;
@@ -25,12 +24,13 @@ const dial = ({ socket: caller, weakMap }) => ({ deviceToken }) => {
     const room = uuid.v1();
     caller.join(room);
     weakMap.set(caller, { room });
+    // send fcm message for callee to wake up. (using room)
     manager
-      .send(messageMaker.makeMessage({
-        room,
-        priority: 'high',
-        deviceToken,
-      }))
+      .send({
+        data: { room },
+        android: { priority: 'high' },
+        token: deviceToken,
+      })
       .then((response) => {
         console.log('Successfully sent message:', response);
       })
