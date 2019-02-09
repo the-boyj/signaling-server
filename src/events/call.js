@@ -25,15 +25,19 @@ const dial = ({ socket: caller, weakMap }) => ({ deviceToken }) => {
     const room = uuid.v1();
     caller.join(room);
     weakMap.set(caller, { room });
-    const msg = messageMaker.makeMessage({ room, priority: 'high', deviceToken });
     manager
-      .send(manager.firebaseManager, msg)
+      .send(messageMaker.makeMessage({
+        room,
+        priority: 'high',
+        deviceToken,
+      }))
       .then((response) => {
         console.log('Successfully sent message:', response);
       })
       .catch((error) => {
         caller.emit('serverError', { description: error.message });
-        throw error;
+        caller.leave(room);
+        weakMap.delete(caller);
       });
   } else {
     caller.emit('serverError', { description: `Invalid device token. ${deviceToken}` });

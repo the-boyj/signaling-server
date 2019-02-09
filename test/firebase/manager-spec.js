@@ -4,17 +4,17 @@ import * as firebaseError from 'firebase-admin/lib/utils/error';
 import * as firebaseAdmin from 'firebase-admin';
 import * as sinon from 'sinon';
 import * as mocks from '../resources/mocks';
-import * as messageMaker from '../../src/firebase/message-maker';
 import * as manager from '../../src/firebase/manager';
 
 const { FirebaseMessagingError } = firebaseError;
 const { describe, it } = mocha;
 const { assert, expect } = chai;
+const { mockCert, mockDatabaseURL, mockMessage } = mocks;
 
 chai.use(require('chai-as-promised')).should();
 const firebaseFunctionsTest = require('firebase-functions-test')();
 
-describe('Cert Test', () => {
+describe('config()', () => {
   it('should not initializeApp because of invalid cert', (done) => {
     // given
     const invalidCerts = [
@@ -24,7 +24,7 @@ describe('Cert Test', () => {
     invalidCerts.forEach((cert) => {
       expect(() => {
         // when
-        manager.config(cert, mocks.mockDatabaseURL);
+        manager.config(cert, mockDatabaseURL);
         // then
       }).to.throw('Certificate object must be an object');
     });
@@ -33,11 +33,11 @@ describe('Cert Test', () => {
   it('should same with expected config', (done) => {
     // given
     const expected = {
-      certificate: mocks.mockCert,
-      databaseURL: mocks.mockDatabaseURL,
+      certificate: mockCert,
+      databaseURL: mockDatabaseURL,
     };
     // when
-    const conf = manager.config(mocks.mockCert, mocks.mockDatabaseURL);
+    const conf = manager.config(mockCert, mockDatabaseURL);
     // then
     assert.equal(conf.credential.certificate.clientEmail, expected.certificate.client_email);
     assert.equal(conf.credential.certificate.privateKey, expected.certificate.private_key);
@@ -46,44 +46,42 @@ describe('Cert Test', () => {
   });
 });
 
-describe('Send Test', () => {
-  describe('Send Fail Test', () => {
-    describe('Send Error Test', () => {
-      describe('Message must be a non-null object', () => {
-        const invalids = [
-          null,
-          undefined,
-          '',
-          NaN,
-          false,
-        ];
-        invalids.forEach((invalidMsg) => {
-          it(`should rejected given ${invalidMsg} data`, () => {
-            // given : invalidMsg
-            // when
-            const sendPromise = manager.send(manager.firebaseManager, invalidMsg);
-            // then
-            return assert.isRejected(sendPromise, FirebaseMessagingError, 'Message must be a non-null object');
-          });
-        });
-      });
-      describe('Exactly one of topic, token or condition is required', () => {
-        const noTarget = [
-          {}, { token: null }, { token: '' }, { topic: null }, { topic: '' }, { condition: null }, { condition: '' },
-        ];
-        noTarget.forEach((invalidMsg) => {
-          it(`should throw given message without target: ${JSON.stringify(invalidMsg)}`, () => {
-            // given : invalidMsg
-            // when
-            const sendPromise = manager.send(manager.firebaseManager, invalidMsg);
-            return assert.isRejected(sendPromise, FirebaseMessagingError, 'Exactly one of topic, token or condition is required');
-          });
-        });
+describe('send()', () => {
+  describe('Message must be a non-null object', () => {
+    const invalids = [
+      null,
+      undefined,
+      '',
+      NaN,
+      false,
+    ];
+    invalids.forEach((invalidMsg) => {
+      it(`should rejected given ${invalidMsg} data`, () => {
+        // given : invalidMsg
+        // when
+        const sendPromise = manager.send(invalidMsg);
+        // then
+        return assert.isRejected(sendPromise, FirebaseMessagingError, 'Message must be a non-null object');
       });
     });
   });
 
-  describe('Send Success Test', () => {
+  describe('Exactly one of topic, token or condition is required', () => {
+    const noTarget = [
+      {}, { token: null }, { token: '' }, { topic: null }, { topic: '' }, { condition: null }, { condition: '' },
+    ];
+    noTarget.forEach((invalidMsg) => {
+      it(`should throw given message without target: ${JSON.stringify(invalidMsg)}`, () => {
+        // given : invalidMsg
+        // when
+        const sendPromise = manager.send(invalidMsg);
+        // then
+        return assert.isRejected(sendPromise, FirebaseMessagingError, 'Exactly one of topic, token or condition is required');
+      });
+    });
+  });
+
+  describe('Send should success with valid room and token', () => {
     let adminInitStub;
     before(() => {
       // stub firebaseAdmin.initializeApp to be a dummy function that doesn't do anything.
@@ -97,20 +95,18 @@ describe('Send Test', () => {
     // reference : https://github.com/firebase/functions-samples/blob/master/quickstarts/uppercase/functions/test/test.offline.js
     it('msgParam should be delivered into messaging().send() and be resolved with msgParam', (done) => {
       // given
-      const mockMessage = messageMaker.makeMessage({
-        data: { room: mocks.mockRoom },
-        token: mocks.mockToken,
-      });
-      const sendStub = sinon.stub();
       const messagingStub = sinon.stub();
+      const sendStub = sinon.stub();
+
       Object.defineProperty(manager.firebaseManager, 'messaging', { get: () => messagingStub });
-      messagingStub.returns({ send: msg => Promise.resolve(msg) });
+      messagingStub.returns({ send: msg => sendStub(msg) });
       sendStub.withArgs(mockMessage).returns(mockMessage);
       // when
-      const sendPromise = manager.send(manager.firebaseManager, mockMessage);
-      // then
-      sendPromise
+      manager
+        .send(mockMessage)
         .then((res) => {
+          // then
+          assert(sendStub.withArgs(mockMessage).calledOnce);
           assert.equal(res.data.room, mockMessage.data.room);
           assert.equal(res.token, mockMessage.token);
           done();
