@@ -61,7 +61,7 @@ describe('echo()', () => {
     const message = 'message'; // TODO: make it as a random string
 
     // when
-    common.echo()(receiver)(message);
+    common.echo({ socket: receiver })(message);
 
     // then
     assert.equal(receiver.messageBox.length, 1);

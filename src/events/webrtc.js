@@ -1,12 +1,31 @@
-// evaluate to true if it is not null, undefined, NaN, empty string, 0, false
-const isValidCandidate = candidate => candidate && candidate.deviceToken;
+const isValidSdp = sdp => sdp;
 
-const sice = () => socket => (candidate) => {
-  if (isValidCandidate(candidate)) {
-    socket.to(candidate.deviceToken).emit('rice', candidate);
+const defaultSsdp = isValid => ({ socket: sender, weakMap }) => (sdp) => {
+  if (isValid(sdp)) {
+    const { room } = weakMap.get(sender);
+    const receivers = sender.to(room);
+    receivers.emit('rsdp', sdp);
   } else {
-    socket.emit('peer_error', candidate);
+    sender.emit('serverError', { description: `Invalid SDP. ${sdp}` });
   }
 };
 
-module.exports = { sice };
+const ssdp = defaultSsdp(isValidSdp);
+
+const defaultSice = isValid => ({ socket: sender, weakMap }) => (candidate) => {
+  if (isValid(candidate)) {
+    const { room } = weakMap.get(sender);
+    const receivers = sender.to(room);
+    receivers.emit('rice', candidate);
+  } else {
+    sender.emit('serverError', { description: `Invalid ICE candidate. ${candidate}` });
+  }
+};
+
+const isValidCandidate = candidate => candidate;
+
+const sice = defaultSice(isValidCandidate);
+
+const helper = { defaultSsdp, defaultSice };
+
+module.exports = { helper, ssdp, sice };
