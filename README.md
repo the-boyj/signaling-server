@@ -1,3 +1,5 @@
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/61eb3242583a46a8948caa1308ddc1f9)](https://www.codacy.com/app/jadenjack/signaling-server?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=jadenjack/signaling-server&amp;utm_campaign=Badge_Grade)
+
 # After clone
 ```zsh
 rm -rf .git && git init && npm install
