@@ -1,5 +1,6 @@
 import listen from 'socket.io';
 import events from './events';
+import logger from './logger';
 
 const addEventListeners = ({ io, weakMap }) => (socket) => {
   events.forEach((event) => {
@@ -19,7 +20,7 @@ class Server {
 
     io.on('connection', addEventListeners({ io, weakMap }));
     io.listen(this.port);
-    console.log(`server started at port ${this.port}`);
+    logger.trace(`server started at port ${this.port}`);
     return io;
   }
 
