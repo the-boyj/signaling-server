@@ -1,5 +1,6 @@
 import * as uuid from 'uuid';
 import * as manager from '../firebase/manager';
+import logger from '../logger';
 
 // evaluate to true if it is not null, undefined, NaN, empty string, 0, false
 const isValidData = data => data && data.room;
@@ -20,6 +21,8 @@ const preparedToRtcCall = ({ io, room }) => isValidData({ io, room })
   && hasFullParticipants({ io, room });
 
 const dial = ({ socket: caller, weakMap }) => ({ deviceToken }) => {
+  logger.trace(`dial() is called with device token: ${deviceToken}`);
+
   if (isValidData(deviceToken)) {
     const room = uuid.v1();
     caller.join(room);
@@ -32,12 +35,13 @@ const dial = ({ socket: caller, weakMap }) => ({ deviceToken }) => {
         token: deviceToken,
       })
       .then((response) => {
-        console.log('Successfully sent message:', response);
+        logger.trace(`dial() fcm sent message successfully: ${response}`);
       })
       .catch((error) => {
         caller.emit('serverError', { description: error.message });
         caller.leave(room);
         weakMap.delete(caller);
+        logger.error(error);
       });
   } else {
     caller.emit('serverError', { description: `Invalid device token. ${deviceToken}` });
@@ -47,6 +51,8 @@ const dial = ({ socket: caller, weakMap }) => ({ deviceToken }) => {
 const defaultAwaken = canParticipate => ({
   io, socket: callee, weakMap,
 }) => ({ room }) => {
+  logger.trace(`awaken() is called with room: ${room}`);
+
   if (canParticipate({ io, room })) {
     const caller = callee.to(room);
     caller.emit('created');
@@ -64,6 +70,8 @@ const defaultAccept = canBeReady => ({
   io, socket: callee, weakMap,
 }) => () => {
   const { room } = weakMap.get(callee);
+  logger.trace(`accept is called with room: ${room}`);
+
   if (canBeReady({ io, room })) {
     io.in(room).emit('ready');
   } else {
@@ -77,6 +85,7 @@ const reject = ({
   io, socket: callee, weakMap,
 }) => () => {
   const { room } = weakMap.get(callee);
+  logger.trace(`reject is called with reject: ${room}`);
   io.in(room).emit('bye');
 };
 
