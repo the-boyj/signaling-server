@@ -1,6 +1,6 @@
 {
   "name": "signaling-server",
-  "version": "1.5.0-SNAPSHOT",
+  "version": "2.0.0-SNAPSHOT",
   "description": "The BOYJ WebRTC signaling server",
   "scripts": {
     "clean": "rimraf ./bin",
@@ -43,8 +43,6 @@
     "eslint-plugin-react": "^7.12.3",
     "mocha": "^5.2.0",
     "rimraf": "^2.6.3",
-    "rxjs": "^6.3.3",
-    "rxjs-compat": "^6.3.3",
     "socket.io-client": "^2.2.0"
   },
   "dependencies": {
