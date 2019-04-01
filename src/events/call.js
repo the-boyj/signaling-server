@@ -3,7 +3,7 @@ import * as manager from '../firebase/manager';
 import logger from '../logger';
 
 // evaluate to true if it is not null, undefined, NaN, empty string, 0, false
-const isValidData = data => data && data.room;
+const isValidData = data => data;
 
 // get the number of participants in the room
 const getParticipantsCount = ({ io, room }) => {
@@ -21,7 +21,7 @@ const preparedToRtcCall = ({ io, room }) => isValidData({ io, room })
   && hasFullParticipants({ io, room });
 
 const dial = ({ socket: caller, weakMap }) => ({ deviceToken }) => {
-  logger.trace(`dial() is called with device token: ${deviceToken}`);
+  logger.info(`dial() is called with device token: ${deviceToken}`);
 
   if (isValidData(deviceToken)) {
     const room = uuid.v1();
@@ -35,7 +35,7 @@ const dial = ({ socket: caller, weakMap }) => ({ deviceToken }) => {
         token: deviceToken,
       })
       .then((response) => {
-        logger.trace(`dial() fcm sent message successfully: ${response}`);
+        logger.info(`dial() fcm sent message successfully: ${response}`);
       })
       .catch((error) => {
         caller.emit('serverError', { description: error.message });
@@ -51,7 +51,7 @@ const dial = ({ socket: caller, weakMap }) => ({ deviceToken }) => {
 const defaultAwaken = canParticipate => ({
   io, socket: callee, weakMap,
 }) => ({ room }) => {
-  logger.trace(`awaken() is called with room: ${room}`);
+  logger.info(`awaken() is called with room: ${room}`);
 
   if (canParticipate({ io, room })) {
     const caller = callee.to(room);
@@ -70,7 +70,7 @@ const defaultAccept = canBeReady => ({
   io, socket: callee, weakMap,
 }) => () => {
   const { room } = weakMap.get(callee);
-  logger.trace(`accept is called with room: ${room}`);
+  logger.info(`accept is called with room: ${room}`);
 
   if (canBeReady({ io, room })) {
     io.in(room).emit('ready');
@@ -85,7 +85,7 @@ const reject = ({
   io, socket: callee, weakMap,
 }) => () => {
   const { room } = weakMap.get(callee);
-  logger.trace(`reject is called with reject: ${room}`);
+  logger.info(`reject is called with reject: ${room}`);
   io.in(room).emit('bye');
 };
 
