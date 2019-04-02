@@ -3,7 +3,7 @@ import * as manager from '../firebase/manager';
 import logger from '../logger';
 
 // evaluate to true if it is not null, undefined, NaN, empty string, 0, false
-const isValidData = data => data && data.room;
+const isValidData = data => data;
 
 // get the number of participants in the room
 const getParticipantsCount = ({ io, room }) => {
