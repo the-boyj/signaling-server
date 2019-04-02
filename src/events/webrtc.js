@@ -3,7 +3,7 @@ import logger from '../logger';
 const isValidSdp = sdp => sdp;
 
 const defaultSsdp = isValid => ({ socket: sender, weakMap }) => (sdp) => {
-  logger.trace(`sendSDP is called with sdp: ${sdp}`);
+  logger.info(`sendSDP is called with sdp: ${sdp}`);
 
   if (isValid(sdp)) {
     const { room } = weakMap.get(sender);
@@ -17,7 +17,7 @@ const defaultSsdp = isValid => ({ socket: sender, weakMap }) => (sdp) => {
 const ssdp = defaultSsdp(isValidSdp);
 
 const defaultSice = isValid => ({ socket: sender, weakMap }) => (candidate) => {
-  logger.trace(`send ICECandidate is called with ice: ${candidate}`);
+  logger.info(`send ICECandidate is called with ice: ${candidate}`);
 
   if (isValid(candidate)) {
     const { room } = weakMap.get(sender);
