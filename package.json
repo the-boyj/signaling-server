@@ -4,7 +4,7 @@
   "description": "The BOYJ WebRTC signaling server",
   "scripts": {
     "clean": "rimraf ./bin",
-    "test": "mocha test --require babel-polyfill --require babel-register --recursive",
+    "test": "mocha \"./src/**/*.test.js\" --require babel-polyfill --require babel-register --recursive",
     "build": "babel ./src -d ./bin",
     "start": "npm run build && node ./bin/index.js",
     "eslint-check": "eslint --print-config . | eslint-config-prettier-check"
