@@ -19,6 +19,8 @@ describe('session_control_events', () => {
   const socket = {
     join: () => {},
     emit: () => {},
+    to: () => {},
+    leave: () => {},
   };
   let fakeSession;
 
@@ -294,6 +296,172 @@ describe('session_control_events', () => {
 
         emitStub.reset();
       });
+    });
+  });
+
+  context('awakenByCaller', () => {
+    let joinStub;
+    let toStub;
+    let emitStub;
+    let fakePayload;
+
+    beforeEach(() => {
+      joinStub = sinon.stub(socket, 'join');
+      toStub = sinon.stub(socket, 'to').returns(socket);
+      emitStub = sinon.stub(socket, 'emit');
+      fakePayload = {
+        room: 'fake room',
+        calleeId: 'fake calleeId',
+      };
+    });
+
+    afterEach(() => {
+      joinStub.restore();
+      toStub.restore();
+      emitStub.restore();
+    });
+
+    it('should throw error if payload is undefined', () => {
+      const errorMessage = `Invalid payload. payload: ${undefined}`;
+
+      expect(events.awakenByCaller(fakeSession).bind(this)).to.throw(errorMessage);
+    });
+
+    it('should occur error when payload is invalid', () => {
+      const invalidPayloads = [
+        {},
+        { room: undefined, calleeId: 'fake calleeId' },
+        { room: 'fake room', calleeId: undefined },
+      ];
+
+      invalidPayloads.forEach((payload) => {
+        const {
+          room,
+          calleeId,
+        } = payload;
+        const errorMessage = `Invalid payload. room: ${room}, calleeId: ${calleeId}`;
+
+        expect(events.awakenByCaller(fakeSession).bind(this, payload)).to.throw(errorMessage);
+      });
+    });
+
+    it('should emit to sender with extra infos', () => {
+      const {
+        room,
+        calleeId,
+      } = fakePayload;
+      const createdEventPayload = { calleeId };
+
+      events.awakenByCaller(fakeSession)(fakePayload);
+
+      expect(fakeSession).to.have.property('room').with.equal(room);
+      expect(fakeSession).to.have.property('user').with.equal(calleeId);
+      expect(joinStub).to.have.been.calledOnce;
+      expect(joinStub).to.have.been.calledWith(room);
+      expect(toStub).to.have.been.calledOnce;
+      expect(toStub).to.have.been.calledWith(room);
+      expect(emitStub).to.have.been.calledOnce;
+      expect(emitStub).to.have.been.calledWith('created', createdEventPayload);
+    });
+  });
+
+  context('awakenByCallerErrorHandler', () => {
+    it('should emit invalid awaken payload error', () => {
+      const err = { message: 'fake error message' };
+      const context = { session: fakeSession };
+      const emitStub = sinon.stub(socket, 'emit');
+
+      events.awakenByCallerErrorHandler(err, context);
+
+      expect(emitStub).to.have.calledOnce;
+      expect(emitStub).to.have.calledWith('SERVER_TO_PEER_ERROR', {
+        code: 303,
+        description: 'Invalid Awaken Payload',
+        message: err.message,
+      });
+
+      emitStub.restore();
+    });
+  });
+
+  context('byeFromClient', () => {
+    let emitStub;
+    let toStub;
+    let leaveStub;
+
+    beforeEach(() => {
+      emitStub = sinon.stub(socket, 'emit');
+      toStub = sinon.stub(socket, 'to').returns(socket);
+      leaveStub = sinon.stub(socket, 'leave');
+      Object.assign(fakeSession, {
+        user: 'fake user',
+        room: 'fake room',
+      });
+    });
+
+    afterEach(() => {
+      emitStub.restore();
+      toStub.restore();
+      leaveStub.restore();
+    });
+
+    it('should occur error when session is not initialized', () => {
+      const invalidSessions = [
+        {},
+        { user: 'fake user', room: undefined },
+        { user: undefined, room: 'fake room' },
+      ];
+
+      invalidSessions.forEach((session) => {
+        const {
+          user,
+          room,
+        } = session;
+        const errorMessage = `Session is not initialized. user: ${user}, room: ${room}`;
+
+        expect(events.byeFromClient(session).bind(this)).to.throw(errorMessage);
+      });
+    });
+
+    it('should broadcast bye and cleanup', () => {
+      const {
+        user,
+        room,
+      } = fakeSession;
+      const byeEventPayload = { sender: user };
+
+      events.byeFromClient(fakeSession)();
+
+      expect(toStub).to.have.been.calledOnce;
+      expect(toStub).to.have.been.calledWith(room);
+      expect(emitStub).to.have.been.calledOnce;
+      expect(emitStub).to.have.been.calledWith('bye', byeEventPayload);
+      expect(leaveStub).to.have.been.calledOnce;
+      expect(fakeSession).to.deep.equal({
+        user: undefined,
+        room: undefined,
+        socket: undefined,
+        io: undefined,
+      });
+    });
+  });
+
+  context('byeFromClientErrorHandler', () => {
+    it('should emit error payload to socket', () => {
+      const err = { message: 'fake message' };
+      const context = { session: fakeSession };
+      const emitStub = sinon.stub(socket, 'emit');
+
+      events.byeFromClientErrorHandler(err, context);
+
+      expect(emitStub).to.have.been.calledOnce;
+      expect(emitStub).to.have.been.calledWith('SERVER_TO_PEER_ERROR', {
+        code: 300,
+        description: 'Internal Server Error',
+        message: err.message,
+      });
+
+      emitStub.restore();
     });
   });
 });

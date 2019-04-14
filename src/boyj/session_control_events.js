@@ -1,3 +1,4 @@
+import logger from '../logger';
 import redis from './model/data_source';
 import notification from './notification_messaging';
 
@@ -154,10 +155,120 @@ const dialToCalleeErrorHandler = (err, context) => {
   socket.emit('SERVER_TO_PEER_ERROR', payload);
 };
 
+/**
+ * awaken 이벤트의 핸들러.
+ * 전화 요청을 받은 수신자가 ACK의 의미를 포함하여 서버에 최초 연결
+ * 세션 객체에 유저 정보를 초기화하며
+ * 전화 승인, 거절 여부와 무관하게 room에 들어가게 된다.
+ *
+ * @param session
+ * @returns {Function}
+ */
+const awakenByCaller = session => (payload) => {
+  if (!payload) {
+    throw new Error(`Invalid payload. payload: ${payload}`);
+  }
+
+  const {
+    room,
+    calleeId,
+  } = payload;
+
+  if (!room || !calleeId) {
+    throw new Error(`Invalid payload. room: ${room}, calleeId: ${calleeId}`);
+  }
+
+  const extraSessionInfo = {
+    room,
+    user: calleeId,
+  };
+
+  Object.assign(session, extraSessionInfo);
+
+  const { socket } = session;
+  const createdEventPayload = { calleeId };
+
+  socket.join(room);
+  // 송신자를 제외한 room의 나머지 클라이언트들에게 송신
+  socket.to(room).emit('created', createdEventPayload);
+};
+
+/**
+ * awaken 이벤트의 에러 헨들러.
+ * 해당 이벤트 핸들러의 에러는 payload의 유효성 검사 과정에서 발생하는것이 전부이므로
+ * 잘못된 Awaken Payload에 해당하는 에러 메시지만 전달하게 된다.
+ *
+ * @param err
+ * @param context
+ */
+const awakenByCallerErrorHandler = (err, context) => {
+  const { session } = context;
+  const { socket } = session;
+  const { message } = err;
+  const payload = {
+    code: 303,
+    description: 'Invalid Awaken Payload',
+    message,
+  };
+
+  socket.emit('SERVER_TO_PEER_ERROR', payload);
+};
+
+/**
+ * 수신자의 bye 이벤트에 대한 핸들러.
+ * 수신자를 room에서 제외시키며
+ * 세션에 할당된 객체들을 해제하여 가비지컬렉션의 대상으로 만듦.
+ *
+ * @param session
+ * @returns {Function}
+ */
+const byeFromClient = session => () => {
+  const {
+    user,
+    room,
+    socket,
+  } = session;
+
+  if (!user || !room) {
+    throw new Error(`Session is not initialized. user: ${user}, room: ${room}`);
+  }
+
+  const byeEventPayload = { sender: user };
+
+  // sender를 제외한 나머지 클라이언트에 해당 정보를 브로드캐스팅
+  socket.to(room).emit('bye', byeEventPayload);
+  socket.leave();
+
+  // eslint-disable-next-line
+  session.user = session.room = session.socket = session.io = undefined;
+};
+
+const byeFromClientErrorHandler = (err, context) => {
+  const { message } = err;
+  const { session } = context;
+  const { socket } = session;
+  const payload = {
+    code: 300,
+    description: 'Internal Server Error',
+    message,
+  };
+
+  socket.emit('SERVER_TO_PEER_ERROR', payload);
+};
+
+const receiveErrorFromClient = session => (payload) => {
+  logger.error(session, payload);
+};
+
 export {
   createSession,
   createRoom,
   createRoomErrorHandler,
   dialToCallee,
   dialToCalleeErrorHandler,
+  awakenByCaller,
+  awakenByCallerErrorHandler,
+  byeFromClient,
+  byeFromClientErrorHandler,
+  receiveErrorFromClient,
 };
