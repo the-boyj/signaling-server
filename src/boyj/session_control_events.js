@@ -12,13 +12,14 @@ const createSession = (defaultSession) => {
   const session = {
     room: undefined,
     user: undefined,
+    callerId: undefined,
   };
   Object.assign(session, defaultSession);
   return session;
 };
 
 /**
- * caller의 방 생성 요청 이벤트(create room)의 핸들러 함수이다.
+ * caller의 방 생성 요청 이벤트(CREATE_ROOM)의 핸들러 함수이다.
  * 세션 생성 후 처음으로 caller 정보 및 room 정보를 받을 수 있기 때문에
  * 이를 세션 객체에 저장해둔다.
  *
@@ -52,7 +53,7 @@ const createRoom = session => (payload) => {
 };
 
 /**
- * create room 이벤트에서 에러 발생 시 에러 핸들러
+ * CREATE_ROOM 이벤트에서 에러 발생 시 에러 핸들러
  * payload의 validation 에러 외에는 발생하지 않으므로
  * 잘못된 payload 에러를 전달한다.
  *
@@ -64,7 +65,7 @@ const createRoomErrorHandler = (err, context) => {
   const { socket } = session;
   const payload = {
     code: 301,
-    description: 'Invalid Create Room Payload',
+    description: 'Invalid CREATE_ROOM Payload',
     message: err.message,
   };
 
@@ -72,7 +73,7 @@ const createRoomErrorHandler = (err, context) => {
 };
 
 /**
- * caller의 통화 연결 요청(dial) 이벤트 핸들러이다.
+ * caller의 통화 연결 요청(DIAL) 이벤트 핸들러이다.
  * fcm을 이용하여 상대에게 알림 요청이 되며
  * skipNotification 설정시 별 다른 행동 없이 종료된다.
  *
@@ -101,11 +102,11 @@ const dialToCallee = session => async (payload) => {
   // notification routine
   const {
     room,
-    user: caller,
+    user: callerId,
   } = session;
 
-  if (!room || !caller) {
-    throw new Error(`The session is not initialized. room: ${room}, user: ${caller}`);
+  if (!room || !callerId) {
+    throw new Error(`The session is not initialized. room: ${room}, user: ${callerId}`);
   }
 
   // TODO: 유저 정보 연동 로직 -> 서비스 레이어로 추상화 필요(RESTful api위해)
@@ -124,7 +125,7 @@ const dialToCallee = session => async (payload) => {
   await notification.send({
     data: {
       room,
-      caller: { tel: caller },
+      callerId,
     },
     android: { priority: 'high' },
     token: deviceToken,
@@ -132,7 +133,7 @@ const dialToCallee = session => async (payload) => {
 };
 
 /**
- * 통화 요청 이벤트(dial)의 에러 핸들러
+ * 통화 요청 이벤트(DIAL)의 에러 핸들러
  * 잘못된 payload의 경우 302 에러를 보내며
  * 그 외의 경우에는 알 수 없는 서버 에러로 전달하게 된다.
  *
@@ -148,7 +149,7 @@ const dialToCalleeErrorHandler = (err, context) => {
   const isPayloadError = /^Invalid payload\.*/.test(message);
   const payload = {
     code: isPayloadError ? 302 : 300,
-    description: isPayloadError ? 'Invalid Dial Payload' : 'Internal Server Error',
+    description: isPayloadError ? 'Invalid DIAL Payload' : 'Internal Server Error',
     message,
   };
 
@@ -156,7 +157,7 @@ const dialToCalleeErrorHandler = (err, context) => {
 };
 
 /**
- * awaken 이벤트의 핸들러.
+ * AWAKEN 이벤트의 핸들러.
  * 전화 요청을 받은 수신자가 ACK의 의미를 포함하여 서버에 최초 연결
  * 세션 객체에 유저 정보를 초기화하며
  * 전화 승인, 거절 여부와 무관하게 room에 들어가게 된다.
@@ -171,30 +172,25 @@ const awakenByCaller = session => (payload) => {
 
   const {
     room,
+    callerId,
     calleeId,
   } = payload;
 
-  if (!room || !calleeId) {
-    throw new Error(`Invalid payload. room: ${room}, calleeId: ${calleeId}`);
+  if (!room || !callerId || !calleeId) {
+    throw new Error(`Invalid payload. room: ${room}, callerId: ${callerId}, calleeId: ${calleeId}`);
   }
 
   const extraSessionInfo = {
     room,
+    callerId,
     user: calleeId,
   };
 
   Object.assign(session, extraSessionInfo);
-
-  const { socket } = session;
-  const createdEventPayload = { calleeId };
-
-  socket.join(room);
-  // 송신자를 제외한 room의 나머지 클라이언트들에게 송신
-  socket.to(room).emit('created', createdEventPayload);
 };
 
 /**
- * awaken 이벤트의 에러 헨들러.
+ * AWAKEN 이벤트의 에러 헨들러.
  * 해당 이벤트 핸들러의 에러는 payload의 유효성 검사 과정에서 발생하는것이 전부이므로
  * 잘못된 Awaken Payload에 해당하는 에러 메시지만 전달하게 된다.
  *
@@ -207,7 +203,7 @@ const awakenByCallerErrorHandler = (err, context) => {
   const { message } = err;
   const payload = {
     code: 303,
-    description: 'Invalid Awaken Payload',
+    description: 'Invalid AWAKEN Payload',
     message,
   };
 
@@ -215,7 +211,7 @@ const awakenByCallerErrorHandler = (err, context) => {
 };
 
 /**
- * 수신자의 bye 이벤트에 대한 핸들러.
+ * 수신자의 END_OF_CALL 이벤트에 대한 핸들러.
  * 수신자를 room에서 제외시키며
  * 세션에 할당된 객체들을 해제하여 가비지컬렉션의 대상으로 만듦.
  *
@@ -236,11 +232,11 @@ const byeFromClient = session => () => {
   const byeEventPayload = { sender: user };
 
   // sender를 제외한 나머지 클라이언트에 해당 정보를 브로드캐스팅
-  socket.to(room).emit('bye', byeEventPayload);
+  socket.to(room).emit('NOTIFY_END_OF_CALL', byeEventPayload);
   socket.leave();
 
   // eslint-disable-next-line
-  session.user = session.room = session.socket = session.io = undefined;
+  session.user = session.callerId = session.room = session.socket = session.io = undefined;
 };
 
 const byeFromClientErrorHandler = (err, context) => {

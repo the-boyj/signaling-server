@@ -39,6 +39,7 @@ describe('session_control_events', () => {
 
       expect(session).to.have.property('room').with.not.exist;
       expect(session).to.have.property('user').with.not.exist;
+      expect(session).to.have.property('callerId').with.not.exist;
     });
 
     it('should create session including defaultSession', () => {
@@ -103,7 +104,7 @@ describe('session_control_events', () => {
       expect(emitStub).to.be.calledOnce;
       expect(emitStub).to.be.calledWith('SERVER_TO_PEER_ERROR', {
         code: 301,
-        description: 'Invalid Create Room Payload',
+        description: 'Invalid CREATE_ROOM Payload',
         message: 'fake error message',
       });
 
@@ -220,7 +221,7 @@ describe('session_control_events', () => {
       const notificationPayload = {
         data: {
           room: fakeSession.room,
-          caller: { tel: fakeSession.user },
+          callerId: fakeSession.user,
         },
         android: { priority: 'high' },
         token: callee.deviceToken,
@@ -267,7 +268,7 @@ describe('session_control_events', () => {
         expect(emitStub).to.have.been.calledOnce;
         expect(emitStub).to.have.been.calledWith('SERVER_TO_PEER_ERROR', {
           code: 302,
-          description: 'Invalid Dial Payload',
+          description: 'Invalid DIAL Payload',
           message,
         });
 
@@ -311,6 +312,7 @@ describe('session_control_events', () => {
       emitStub = sinon.stub(socket, 'emit');
       fakePayload = {
         room: 'fake room',
+        callerId: 'fake callerId',
         calleeId: 'fake calleeId',
       };
     });
@@ -330,16 +332,18 @@ describe('session_control_events', () => {
     it('should occur error when payload is invalid', () => {
       const invalidPayloads = [
         {},
-        { room: undefined, calleeId: 'fake calleeId' },
-        { room: 'fake room', calleeId: undefined },
+        { room: undefined, callerId: undefined, calleeId: 'fake calleeId' },
+        { room: undefined, callerId: 'fake callerId', calleeId: undefined },
+        { room: 'fake room', callerId: undefined, calleeId: undefined },
       ];
 
       invalidPayloads.forEach((payload) => {
         const {
           room,
+          callerId,
           calleeId,
         } = payload;
-        const errorMessage = `Invalid payload. room: ${room}, calleeId: ${calleeId}`;
+        const errorMessage = `Invalid payload. room: ${room}, callerId: ${callerId}, calleeId: ${calleeId}`;
 
         expect(events.awakenByCaller(fakeSession).bind(this, payload)).to.throw(errorMessage);
       });
@@ -349,19 +353,14 @@ describe('session_control_events', () => {
       const {
         room,
         calleeId,
+        callerId,
       } = fakePayload;
-      const createdEventPayload = { calleeId };
 
       events.awakenByCaller(fakeSession)(fakePayload);
 
       expect(fakeSession).to.have.property('room').with.equal(room);
       expect(fakeSession).to.have.property('user').with.equal(calleeId);
-      expect(joinStub).to.have.been.calledOnce;
-      expect(joinStub).to.have.been.calledWith(room);
-      expect(toStub).to.have.been.calledOnce;
-      expect(toStub).to.have.been.calledWith(room);
-      expect(emitStub).to.have.been.calledOnce;
-      expect(emitStub).to.have.been.calledWith('created', createdEventPayload);
+      expect(fakeSession).to.have.property('callerId').with.equal(callerId);
     });
   });
 
@@ -376,7 +375,7 @@ describe('session_control_events', () => {
       expect(emitStub).to.have.calledOnce;
       expect(emitStub).to.have.calledWith('SERVER_TO_PEER_ERROR', {
         code: 303,
-        description: 'Invalid Awaken Payload',
+        description: 'Invalid AWAKEN Payload',
         message: err.message,
       });
 
@@ -435,10 +434,11 @@ describe('session_control_events', () => {
       expect(toStub).to.have.been.calledOnce;
       expect(toStub).to.have.been.calledWith(room);
       expect(emitStub).to.have.been.calledOnce;
-      expect(emitStub).to.have.been.calledWith('bye', byeEventPayload);
+      expect(emitStub).to.have.been.calledWith('NOTIFY_END_OF_CALL', byeEventPayload);
       expect(leaveStub).to.have.been.calledOnce;
       expect(fakeSession).to.deep.equal({
         user: undefined,
+        callerId: undefined,
         room: undefined,
         socket: undefined,
         io: undefined,
