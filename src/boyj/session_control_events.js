@@ -229,10 +229,10 @@ const byeFromClient = session => () => {
     throw new Error(`Session is not initialized. user: ${user}, room: ${room}`);
   }
 
-  const byeEventPayload = { sender: user };
+  const endOfCallPayload = { sender: user };
 
   // sender를 제외한 나머지 클라이언트에 해당 정보를 브로드캐스팅
-  socket.to(room).emit('NOTIFY_END_OF_CALL', byeEventPayload);
+  socket.to(room).emit('NOTIFY_END_OF_CALL', endOfCallPayload);
   socket.leave();
 
   // eslint-disable-next-line
