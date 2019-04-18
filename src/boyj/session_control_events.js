@@ -6,7 +6,7 @@ import notification from './notification_messaging';
  * 커넥션 연결 시 소켓에 매핑될 세션객체를 초기화하는 함수
  *
  * @param defaultSession
- * @returns {{user: undefined, room: undefined}}
+ * @returns {{callerId: undefined, user: undefined, room: undefined}}
  */
 const createSession = (defaultSession) => {
   const session = {
