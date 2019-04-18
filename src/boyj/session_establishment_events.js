@@ -1,5 +1,5 @@
 /**
- * accept 이벤트의 핸들러
+ * ACCEPT 이벤트의 핸들러
  *
  * @param session
  * @returns {Function}
@@ -22,17 +22,19 @@ const acceptFromCallee = session => (payload) => {
     socket,
   } = session;
 
+  socket.join(room);
+
   const relayOfferPayload = {
     sender: user,
     sdp,
   };
 
   // 송신자를 제외한 나머지 클라이언트에 브로드캐스팅
-  socket.to(room).emit('relay offer', relayOfferPayload);
+  socket.to(room).emit('RELAY_OFFER', relayOfferPayload);
 };
 
 /**
- * accept 이벤트의 에러 핸들러
+ * ACCEPT 이벤트의 에러 핸들러
  *
  * @param err
  * @param context
@@ -43,7 +45,7 @@ const acceptFromCalleeErrorHandler = (err, context) => {
   const { socket } = session;
   const payload = {
     code: 304,
-    description: 'Invalid Accept Payload',
+    description: 'Invalid ACCEPT Payload',
     message,
   };
 
@@ -51,27 +53,57 @@ const acceptFromCalleeErrorHandler = (err, context) => {
 };
 
 /**
- * reject 이벤트 핸들러
+ * REJECT 이벤트 핸들러
  *
  * @param session
  * @returns {Function}
  */
-const rejectFromCallee = session => () => {
+const rejectFromCallee = session => (payload) => {
+  if (!payload) {
+    throw new Error(`Invalid payload. payload: ${payload}`);
+  }
+
+  const { receiver } = payload;
+
+  if (!receiver) {
+    throw new Error(`Invalid payload. receiver: ${receiver}`);
+  }
+
   const {
-    room,
     user,
     socket,
   } = session;
 
-  const byeEventPayload = { sender: user };
+  const notifyRejectPayload = {
+    sender: user,
+    receiver,
+  };
 
   // TODO: 세션 유효성 검사 필요.
-  // TODO: room이 아닌 caller에 보내는게 더 좋아보임.
-  socket.to(room).emit('bye', byeEventPayload);
+  socket.to(`user:${receiver}`).emit('NOTIFY_REJECT', notifyRejectPayload);
 };
 
 /**
- * send answer 이벤트 핸들러
+ * REJECT 이벤트의 에러 핸들러
+ *
+ * @param err
+ * @param context
+ */
+const rejectFromCalleeErrorHandler = (err, context) => {
+  const { message } = err;
+  const { session } = context;
+  const { socket } = session;
+  const errorPayload = {
+    code: 307,
+    description: 'Invalid REJECT Payload',
+    message,
+  };
+
+  socket.emit('SERVER_TO_PEER_ERROR', errorPayload);
+};
+
+/**
+ * ANSWER 이벤트 핸들러
  *
  * @param session
  * @returns {Function}
@@ -98,17 +130,14 @@ const answerFromClient = session => (payload) => {
 
   const relayAnswerPayload = {
     sdp,
-    receiver,
     sender: user,
   };
 
-  // TODO: createRoom, awaken에서 user:userId 방 생성 필요
-  // TODO: bye에서 user:userId release 필요.
-  socket.to(`user:${receiver}`).emit('relay answer', relayAnswerPayload);
+  socket.to(`user:${receiver}`).emit('RELAY_ANSWER', relayAnswerPayload);
 };
 
 /**
- * send answer 이벤트의 에러 핸들러
+ * ANSWER 이벤트의 에러 핸들러
  *
  * @param err
  * @param context
@@ -119,7 +148,7 @@ const answerFromClientErrorHandler = (err, context) => {
   const { socket } = session;
   const errorPayload = {
     code: 305,
-    description: 'Invalid Send Answer Payload',
+    description: 'Invalid ANSWER Payload',
     message,
   };
 
@@ -127,12 +156,12 @@ const answerFromClientErrorHandler = (err, context) => {
 };
 
 /**
- * send icecandidate 이벤트 핸들러
+ * SEND_ICE_CANDIDATE 이벤트 핸들러
  *
  * @param session
  * @returns {Function}
  */
-const icecandidateFromClient = session => (payload) => {
+const iceCandidateFromClient = session => (payload) => {
   if (!payload) {
     throw new Error(`Invalid payload. payload: ${payload}`);
   }
@@ -152,15 +181,12 @@ const icecandidateFromClient = session => (payload) => {
     socket,
   } = session;
 
-  const relayIcecandidatePayload = {
+  const relayIceCandidatePayload = {
     iceCandidate,
-    receiver,
     sender: user,
   };
 
-  // TODO: createRoom, awaken에서 user:userId 방 생성 필요
-  // TODO: bye에서 user:userId release 필요.
-  socket.to(`user:${receiver}`).emit('relay icecandidate', relayIcecandidatePayload);
+  socket.to(`user:${receiver}`).emit('RELAY_ICE_CANDIDATE', relayIceCandidatePayload);
 };
 
 /**
@@ -169,13 +195,13 @@ const icecandidateFromClient = session => (payload) => {
  * @param err
  * @param context
  */
-const icecandidateFromClientErrorHandler = (err, context) => {
+const iceCandidateFromClientErrorHandler = (err, context) => {
   const { message } = err;
   const { session } = context;
   const { socket } = session;
   const errorPayload = {
     code: 306,
-    description: 'Invalid Send Icecandidate Payload',
+    description: 'Invalid SEND_ICE_CANDIDATE Payload',
     message,
   };
 
@@ -186,8 +212,9 @@ export {
   acceptFromCallee,
   acceptFromCalleeErrorHandler,
   rejectFromCallee,
+  rejectFromCalleeErrorHandler,
   answerFromClient,
   answerFromClientErrorHandler,
-  icecandidateFromClient,
-  icecandidateFromClientErrorHandler,
+  iceCandidateFromClient,
+  iceCandidateFromClientErrorHandler,
 };

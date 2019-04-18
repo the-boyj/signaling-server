@@ -20,6 +20,7 @@ describe('session_establishment_events', () => {
     to: () => {},
   };
   let fakeSession;
+  let joinStub;
   let emitStub;
   let toStub;
 
@@ -30,11 +31,13 @@ describe('session_establishment_events', () => {
       user: 'fake user',
       room: 'fake room',
     };
+    joinStub = sinon.stub(socket, 'join');
     emitStub = sinon.stub(socket, 'emit');
     toStub = sinon.stub(socket, 'to').returns(socket);
   });
 
   afterEach(() => {
+    joinStub.restore();
     emitStub.restore();
     toStub.restore();
   });
@@ -54,7 +57,7 @@ describe('session_establishment_events', () => {
         .to.throw(errorMessage);
     });
 
-    it('should broadcast relay offer including sender info', () => {
+    it('should join the room and broadcast offer', () => {
       const {
         room,
         user,
@@ -67,10 +70,12 @@ describe('session_establishment_events', () => {
 
       events.acceptFromCallee(fakeSession)(fakePayload);
 
+      expect(joinStub).to.have.been.calledOnce;
+      expect(joinStub).to.have.been.calledWith(room);
       expect(toStub).to.have.been.calledOnce;
       expect(toStub).to.have.been.calledWith(room);
       expect(emitStub).to.have.been.calledOnce;
-      expect(emitStub).to.have.been.calledWith('relay offer', relayOfferPayload);
+      expect(emitStub).to.have.been.calledWith('RELAY_OFFER', relayOfferPayload);
     });
   });
 
@@ -80,7 +85,7 @@ describe('session_establishment_events', () => {
       const context = { session: fakeSession };
       const errorPayload = {
         code: 304,
-        description: 'Invalid Accept Payload',
+        description: 'Invalid ACCEPT Payload',
         message: err.message,
       };
 
@@ -92,19 +97,56 @@ describe('session_establishment_events', () => {
   });
 
   context('rejectFromCallee', () => {
-    it('should emit bye to other clients', () => {
-      const {
-        room,
-        user,
-      } = fakeSession;
-      const byeEventPayload = { sender: user };
+    it('should throw error if payload is undefined', () => {
+      const errorMessage = `Invalid payload. payload: ${undefined}`;
 
-      events.rejectFromCallee(fakeSession)();
+      expect(events.rejectFromCallee(fakeSession).bind(this)).to.throw(errorMessage);
+    });
+
+    it('should throw error if payload does not include property', () => {
+      const invalidPayloads = [
+        {},
+        { receiver: undefined },
+      ];
+
+      invalidPayloads.forEach((payload) => {
+        const { receiver } = payload;
+        const errorMessage = `Invalid payload. receiver: ${receiver}`;
+
+        expect(events.rejectFromCallee(fakeSession).bind(this, payload)).to.throw(errorMessage);
+      });
+    });
+
+    it('should broadcast to caller', () => {
+      const { user } = fakeSession;
+      const fakePayload = { receiver: 'fake receiver' };
+      const byeEventPayload = {
+        sender: user,
+        receiver: fakePayload.receiver,
+      };
+
+      events.rejectFromCallee(fakeSession)(fakePayload);
 
       expect(toStub).to.have.been.calledOnce;
-      expect(toStub).to.have.been.calledWith(room);
+      expect(toStub).to.have.been.calledWith(`user:${fakePayload.receiver}`);
       expect(emitStub).to.have.been.calledOnce;
-      expect(emitStub).to.have.been.calledWith('bye', byeEventPayload);
+      expect(emitStub).to.have.been.calledWith('NOTIFY_REJECT', byeEventPayload);
+    });
+  });
+
+  context('rejectFromCalleeErrorHandler', () => {
+    it('should emit REJECT error to sender', () => {
+      const context = { session: fakeSession };
+      const err = { message: 'fake message' };
+
+      events.rejectFromCalleeErrorHandler(err, context);
+
+      expect(emitStub).to.have.been.calledOnce;
+      expect(emitStub).to.have.been.calledWith('SERVER_TO_PEER_ERROR', {
+        code: 307,
+        description: 'Invalid REJECT Payload',
+        message: err.message,
+      });
     });
   });
 
@@ -140,16 +182,15 @@ describe('session_establishment_events', () => {
       };
       const relayAnswerPayload = {
         sdp: fakePayload.sdp,
-        receiver: fakePayload.receiver,
         sender: fakeSession.user,
       };
 
-      events.answerFromClient(fakeSession)(relayAnswerPayload);
+      events.answerFromClient(fakeSession)(fakePayload);
 
       expect(toStub).to.have.been.calledOnce;
       expect(toStub).to.have.been.calledWith(`user:${fakePayload.receiver}`);
       expect(emitStub).to.have.been.calledOnce;
-      expect(emitStub).to.have.been.calledWith('relay answer', relayAnswerPayload);
+      expect(emitStub).to.have.been.calledWith('RELAY_ANSWER', relayAnswerPayload);
     });
   });
 
@@ -159,7 +200,7 @@ describe('session_establishment_events', () => {
       const context = { session: fakeSession };
       const errorPayload = {
         code: 305,
-        description: 'Invalid Send Answer Payload',
+        description: 'Invalid ANSWER Payload',
         message: err.message,
       };
 
@@ -170,18 +211,18 @@ describe('session_establishment_events', () => {
     });
   });
 
-  context('icecandidateFromClient', () => {
+  context('iceCandidateFromClient', () => {
     it('should throw error if payload is undefined', () => {
       const errMessage = `Invalid payload. payload: ${undefined}`;
 
-      expect(events.icecandidateFromClient(fakeSession).bind(this)).to.throw(errMessage);
+      expect(events.iceCandidateFromClient(fakeSession).bind(this)).to.throw(errMessage);
     });
 
     it('should throw error if payload does not contain properties', () => {
       const invalidPayloads = [
         {},
         { iceCandidate: undefined, receiver: 'fake receiver' },
-        { iceCandidate: 'fake icecandidate', receiver: undefined },
+        { iceCandidate: 'fake iceCandidate', receiver: undefined },
       ];
 
       invalidPayloads.forEach((payload) => {
@@ -191,41 +232,40 @@ describe('session_establishment_events', () => {
         } = payload;
         const errMessage = `Invalid payload. iceCandidate: ${iceCandidate}, receiver: ${receiver}`;
 
-        expect(events.icecandidateFromClient(fakeSession).bind(this, payload)).to.throw(errMessage);
+        expect(events.iceCandidateFromClient(fakeSession).bind(this, payload)).to.throw(errMessage);
       });
     });
 
-    it('should relay icecandidate to receiver', () => {
+    it('should relay iceCandidate to receiver', () => {
       const fakePayload = {
-        iceCandidate: 'fake icecandidate',
+        iceCandidate: 'fake iceCandidate',
         receiver: 'fake receiver',
       };
-      const relayIcecandidatePayload = {
+      const relayIceCandidatePayload = {
         iceCandidate: fakePayload.iceCandidate,
-        receiver: fakePayload.receiver,
         sender: fakeSession.user,
       };
 
-      events.icecandidateFromClient(fakeSession)(fakePayload);
+      events.iceCandidateFromClient(fakeSession)(fakePayload);
 
       expect(toStub).to.have.been.calledOnce;
       expect(toStub).to.have.been.calledWith(`user:${fakePayload.receiver}`);
       expect(emitStub).to.have.been.calledOnce;
-      expect(emitStub).to.have.been.calledWith('relay icecandidate', relayIcecandidatePayload);
+      expect(emitStub).to.have.been.calledWith('RELAY_ICE_CANDIDATE', relayIceCandidatePayload);
     });
   });
 
-  context('icecandidateFromClientErrorHandler', () => {
+  context('iceCandidateFromClientErrorHandler', () => {
     it('should emit error message to client', () => {
       const err = { message: 'fake message' };
       const context = { session: fakeSession };
       const errorPayload = {
         code: 306,
-        description: 'Invalid Send Icecandidate Payload',
+        description: 'Invalid SEND_ICE_CANDIDATE Payload',
         message: err.message,
       };
 
-      events.icecandidateFromClientErrorHandler(err, context);
+      events.iceCandidateFromClientErrorHandler(err, context);
 
       expect(emitStub).to.have.been.calledOnce;
       expect(emitStub).to.have.been.calledWith('SERVER_TO_PEER_ERROR', errorPayload);
