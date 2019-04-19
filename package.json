@@ -4,7 +4,7 @@
   "description": "The BOYJ WebRTC signaling server",
   "scripts": {
     "clean": "rimraf ./bin",
-    "test": "mocha test --require babel-polyfill --require babel-register --recursive",
+    "test": "mocha \"./src/**/*.test.js\" --require babel-polyfill --require babel-register --recursive --exit",
     "build": "babel ./src -d ./bin",
     "start": "npm run build && node ./bin/index.js",
     "eslint-check": "eslint --print-config . | eslint-config-prettier-check"
@@ -51,8 +51,10 @@
   },
   "dependencies": {
     "babel-polyfill": "^6.26.0",
+    "bluebird": "^3.5.4",
     "firebase-admin": "^6.5.1",
     "pino": "^5.11.2",
+    "redis": "^2.8.0",
     "socket.io": "^2.2.0",
     "uuid": "^3.3.2"
   }
