@@ -27,6 +27,7 @@ export default class SignalingServer {
     this.createSession = defaultParam => defaultParam;
     this.hookAfterSessionCreation = () => {};
     this.hookAfterSocketInitialization = () => {};
+    this.defaultErrorHandler = () => {};
   }
 
   /**
@@ -64,6 +65,17 @@ export default class SignalingServer {
    */
   setHookAfterSocketInitialization(hookAfterSocketInitialization = () => {}) {
     this.hookAfterSocketInitialization = hookAfterSocketInitialization;
+    return this;
+  }
+
+  /**
+   * 시그널링 이벤트에서 발생한 에러에 대한 디폴트 에러 핸들러를 설정합니다.
+   *
+   * @param defaultErrorHandler
+   * @returns {SignalingServer}
+   */
+  setDefaultErrorHandler(defaultErrorHandler = () => {}) {
+    this.defaultErrorHandler = defaultErrorHandler;
     return this;
   }
 
@@ -130,20 +142,17 @@ export default class SignalingServer {
 
       hookAfterSessionCreation(session);
 
-      eventHandlers.forEach(({ callback, handler }, event) => {
-        socket.on(event, (payload) => {
+      eventHandlers.forEach(({ callback, handler = this.defaultErrorHandler }, event) => {
+        socket.on(event, async (payload = {}) => {
           try {
-            callback(session)(payload);
+            await callback(session)(payload);
           } catch (err) {
-            if (handler && (typeof handler) === 'function') {
-              try {
-                handler(err, { session, payload });
-                return;
-              } catch (handlerErr) {
-                logger.error(handlerErr);
-              }
+            try {
+              await handler(err, { session, payload });
+              return;
+            } catch (handlerErr) {
+              logger.error(handlerErr);
             }
-            logger.error(err);
           }
         });
       });
