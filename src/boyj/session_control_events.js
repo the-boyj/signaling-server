@@ -1,6 +1,8 @@
 import logger from '../logger';
 import redis from './model/data_source';
 import notification from './notification_messaging';
+import { validatePayload } from './signaling_validations';
+import { code } from './signaling_error';
 
 /**
  * 커넥션 연결 시 소켓에 매핑될 세션객체를 초기화하는 함수
@@ -27,18 +29,16 @@ const createSession = (defaultSession) => {
  * @returns {Function}
  */
 const createRoom = session => (payload) => {
-  if (!payload) {
-    throw new Error(`Invalid payload. payload: ${payload}`);
-  }
+  validatePayload({
+    payload,
+    props: ['room', 'callerId'],
+    options: { code: code.INVALID_CREATE_ROOM_PAYLOAD },
+  });
 
   const {
     room,
     callerId,
   } = payload;
-
-  if (!room || !callerId) {
-    throw new Error(`Invalid payload. room: ${room}, callerId: ${callerId}`);
-  }
 
   const extraSessionInfo = {
     room,
@@ -49,27 +49,7 @@ const createRoom = session => (payload) => {
 
   const { socket } = session;
 
-  socket.join(room);
-};
-
-/**
- * CREATE_ROOM 이벤트에서 에러 발생 시 에러 핸들러
- * payload의 validation 에러 외에는 발생하지 않으므로
- * 잘못된 payload 에러를 전달한다.
- *
- * @param err
- * @param context
- */
-const createRoomErrorHandler = (err, context) => {
-  const { session } = context;
-  const { socket } = session;
-  const payload = {
-    code: 301,
-    description: 'Invalid CREATE_ROOM Payload',
-    message: err.message,
-  };
-
-  socket.emit('SERVER_TO_PEER_ERROR', payload);
+  socket.join([room, `user:${callerId}`]);
 };
 
 /**
@@ -81,19 +61,16 @@ const createRoomErrorHandler = (err, context) => {
  * @returns {Function}
  */
 const dialToCallee = session => async (payload) => {
-  // TODO: session, payload 유효성 검사 로직 분리 필요.
-  if (!payload) {
-    throw new Error(`Invalid payload. payload: ${payload}`);
-  }
+  validatePayload({
+    payload,
+    props: ['calleeId'],
+    options: { code: code.INVALID_DIAL_PAYLOAD },
+  });
 
   const {
     calleeId,
     skipNotification = false,
   } = payload;
-
-  if (!calleeId) {
-    throw new Error(`Invalid payload. calleeId: ${calleeId}`);
-  }
 
   if (skipNotification) {
     return;
@@ -104,10 +81,6 @@ const dialToCallee = session => async (payload) => {
     room,
     user: callerId,
   } = session;
-
-  if (!room || !callerId) {
-    throw new Error(`The session is not initialized. room: ${room}, user: ${callerId}`);
-  }
 
   // TODO: 유저 정보 연동 로직 -> 서비스 레이어로 추상화 필요(RESTful api위해)
   const callee = await redis.hgetallAsync(`user:${calleeId}`);
@@ -133,30 +106,6 @@ const dialToCallee = session => async (payload) => {
 };
 
 /**
- * 통화 요청 이벤트(DIAL)의 에러 핸들러
- * 잘못된 payload의 경우 302 에러를 보내며
- * 그 외의 경우에는 알 수 없는 서버 에러로 전달하게 된다.
- *
- * @param err
- * @param context
- */
-const dialToCalleeErrorHandler = (err, context) => {
-  const { message } = err;
-  const { session } = context;
-  const { socket } = session;
-
-  // TODO: 이후 Error를 상속한 다른 에러 클래스로 분기 필요
-  const isPayloadError = /^Invalid payload\.*/.test(message);
-  const payload = {
-    code: isPayloadError ? 302 : 300,
-    description: isPayloadError ? 'Invalid DIAL Payload' : 'Internal Server Error',
-    message,
-  };
-
-  socket.emit('SERVER_TO_PEER_ERROR', payload);
-};
-
-/**
  * AWAKEN 이벤트의 핸들러.
  * 전화 요청을 받은 수신자가 ACK의 의미를 포함하여 서버에 최초 연결
  * 세션 객체에 유저 정보를 초기화하며
@@ -166,19 +115,17 @@ const dialToCalleeErrorHandler = (err, context) => {
  * @returns {Function}
  */
 const awakenByCaller = session => (payload) => {
-  if (!payload) {
-    throw new Error(`Invalid payload. payload: ${payload}`);
-  }
+  validatePayload({
+    payload,
+    props: ['room', 'callerId', 'calleeId'],
+    options: { code: code.INVALID_AWAKEN_PAYLOAD },
+  });
 
   const {
     room,
     callerId,
     calleeId,
   } = payload;
-
-  if (!room || !callerId || !calleeId) {
-    throw new Error(`Invalid payload. room: ${room}, callerId: ${callerId}, calleeId: ${calleeId}`);
-  }
 
   const extraSessionInfo = {
     room,
@@ -187,27 +134,6 @@ const awakenByCaller = session => (payload) => {
   };
 
   Object.assign(session, extraSessionInfo);
-};
-
-/**
- * AWAKEN 이벤트의 에러 헨들러.
- * 해당 이벤트 핸들러의 에러는 payload의 유효성 검사 과정에서 발생하는것이 전부이므로
- * 잘못된 Awaken Payload에 해당하는 에러 메시지만 전달하게 된다.
- *
- * @param err
- * @param context
- */
-const awakenByCallerErrorHandler = (err, context) => {
-  const { session } = context;
-  const { socket } = session;
-  const { message } = err;
-  const payload = {
-    code: 303,
-    description: 'Invalid AWAKEN Payload',
-    message,
-  };
-
-  socket.emit('SERVER_TO_PEER_ERROR', payload);
 };
 
 /**
@@ -225,46 +151,34 @@ const byeFromClient = session => () => {
     socket,
   } = session;
 
-  if (!user || !room) {
-    throw new Error(`Session is not initialized. user: ${user}, room: ${room}`);
-  }
-
   const endOfCallPayload = { sender: user };
 
   // sender를 제외한 나머지 클라이언트에 해당 정보를 브로드캐스팅
   socket.to(room).emit('NOTIFY_END_OF_CALL', endOfCallPayload);
-  socket.leave();
+  socket.leave([room, `user:${user}`]);
 
   // eslint-disable-next-line
   session.user = session.callerId = session.room = session.socket = session.io = undefined;
 };
 
-const byeFromClientErrorHandler = (err, context) => {
-  const { message } = err;
-  const { session } = context;
-  const { socket } = session;
-  const payload = {
-    code: 300,
-    description: 'Internal Server Error',
-    message,
-  };
-
-  socket.emit('SERVER_TO_PEER_ERROR', payload);
-};
-
 const receiveErrorFromClient = session => (payload) => {
-  logger.error(session, payload);
+  const {
+    room,
+    user,
+  } = session;
+
+  logger.error({
+    room,
+    user,
+    payload,
+  });
 };
 
 export {
   createSession,
   createRoom,
-  createRoomErrorHandler,
   dialToCallee,
-  dialToCalleeErrorHandler,
   awakenByCaller,
-  awakenByCallerErrorHandler,
   byeFromClient,
-  byeFromClientErrorHandler,
   receiveErrorFromClient,
 };

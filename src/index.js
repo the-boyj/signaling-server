@@ -1,20 +1,35 @@
 import Server from './server';
-import logger from './logger';
+import {
+  createSession,
+  createRoom,
+  dialToCallee,
+  awakenByCaller,
+  byeFromClient,
+  receiveErrorFromClient,
+} from './boyj/session_control_events';
+import {
+  acceptFromCallee,
+  rejectFromCallee,
+  answerFromClient,
+  iceCandidateFromClient,
+} from './boyj/session_establishment_events';
+import errorHandler from './boyj/signaling_error_handler';
+import { withSession } from './boyj/signaling_validations';
 
 const server = new Server({ port: 3000 });
 
 server
-  .setCreateSession(defaultSession => defaultSession)
+  .setCreateSession(createSession)
   .setHookAfterSessionCreation(() => {})
   .setHookAfterSocketInitialization(() => {})
-  .on('dummyEvent', session => (payload) => {
-    logger.info(`${session}: ${payload}`);
-    throw new Error('This is test error');
-  }, (err, { session, payload }) => {
-    logger.info(`${err}, ${session}, ${payload}`);
-    throw err;
-  })
-  .on('errorEvent', () => () => {
-    throw new Error('This is error in errorEvent');
-  })
+  .setDefaultErrorHandler(errorHandler)
+  .on('CREATE_ROOM', createRoom)
+  .on('DIAL', withSession(dialToCallee))
+  .on('AWAKEN', awakenByCaller)
+  .on('ACCEPT', withSession(acceptFromCallee))
+  .on('REJECT', withSession(rejectFromCallee))
+  .on('ANSWER', withSession(answerFromClient))
+  .on('SEND_ICE_CANDIDATE', withSession(iceCandidateFromClient))
+  .on('END_OF_CALL', withSession(byeFromClient))
+  .on('PEER_TO_SERVER_ERROR', withSession(receiveErrorFromClient))
   .start();
