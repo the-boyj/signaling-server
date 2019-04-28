@@ -1,12 +1,16 @@
-import * as Redis from 'redis';
-import * as Promise from 'bluebird';
+import Sequelize from 'sequelize';
 import config from '../config';
 
-const { redisOptions } = config;
+const {
+  schema,
+  user_name: userName,
+  password,
+  options,
+} = config.sequelize;
 
-Promise.promisifyAll(Redis.RedisClient.prototype);
-Promise.promisifyAll(Redis.Multi.prototype);
+const sequelize = new Sequelize(schema, userName, password, options);
 
-const redis = Redis.createClient(redisOptions);
-
-export default redis;
+export {
+  Sequelize,
+  sequelize,
+};
