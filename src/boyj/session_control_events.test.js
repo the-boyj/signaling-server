@@ -13,7 +13,8 @@ chai.use(sinonChai);
 const events = require('./session_control_events');
 const validator = require('./signaling_validations');
 const { code } = require('./signaling_error');
-const redis = require('./model/data_source').default;
+const userService = require('./model/user_service');
+const callingService = require('./model/calling_service');
 const notification = require('./notification_messaging').default;
 
 describe('session_control_events', () => {
@@ -103,65 +104,65 @@ describe('session_control_events', () => {
         calleeId: 'fake calleeId',
         skipNotification: true,
       };
-      const hgetallAsyncSpy = sinon.spy(redis, 'hgetallAsync');
+      const findUserById = sinon.spy(userService, 'findUserById');
       const sendSpy = sinon.spy(notification, 'send');
 
       events.dialToCallee(fakeSession)(fakePayload);
 
-      expect(hgetallAsyncSpy).to.not.be.called;
-      expect(sendSpy).to.not.be.called;
+      expect(findUserById).to.not.have.been.called;
+      expect(sendSpy).to.not.have.been.called;
 
-      hgetallAsyncSpy.restore();
+      findUserById.restore();
       sendSpy.restore();
     });
 
     it('should throw error if there is no user data', () => {
-      const hgetallAsyncStub = sinon.stub(redis, 'hgetallAsync').resolves(undefined);
-      const errorMessage = 'There is no user data for user fake calleeId';
+      const findUserById = sinon.stub(userService, 'findUserById').resolves(null);
+      const errorMessage = `There is no user data for user ${fakePayload.calleeId}`;
 
       const dialToCalleePromise = events.dialToCallee(fakeSession)(fakePayload);
 
       expect(dialToCalleePromise).to.eventually.be.rejectedWith(errorMessage);
-      expect(hgetallAsyncStub).to.be.calledOnce;
-      expect(hgetallAsyncStub).to.be.calledWith(`user:${fakePayload.calleeId}`);
+      expect(findUserById).to.have.been.calledOnce;
+      expect(findUserById).to.have.been.calledWith({ userId: fakePayload.calleeId });
 
-      hgetallAsyncStub.restore();
+      findUserById.restore();
     });
 
     it('should throw error if there is no available user device token', () => {
-      const callee = { deviceToken: undefined };
-      const hgetallAsyncStub = sinon.stub(redis, 'hgetallAsync').resolves(callee);
-      const errorMessage = 'There is no available deviceToken for user fake calleeId';
+      const findUserById = sinon.stub(userService, 'findUserById').resolves({});
+      const errorMessage = `There is no available deviceToken for user ${fakePayload.calleeId}`;
 
       const dialToCalleePromise = events.dialToCallee(fakeSession)(fakePayload);
 
       expect(dialToCalleePromise).to.eventually.be.rejectedWith(errorMessage);
-      expect(hgetallAsyncStub).to.be.calledOnce;
-      expect(hgetallAsyncStub).to.be.calledWith(`user:${fakePayload.calleeId}`);
+      expect(findUserById).to.have.been.calledOnce;
+      expect(findUserById).to.have.been.calledWith({ userId: fakePayload.calleeId });
 
-      hgetallAsyncStub.restore();
+      findUserById.restore();
     });
 
     it('should send notification with caller information', async () => {
-      const callee = { deviceToken: 'fake deviceToken' };
+      const callee = { device_token: 'fake deviceToken' };
       const notificationPayload = {
         data: {
           room: fakeSession.room,
           callerId: fakeSession.user,
         },
         android: { priority: 'high' },
-        token: callee.deviceToken,
+        token: callee.device_token,
       };
-      const hgetallAsyncStub = sinon.stub(redis, 'hgetallAsync').resolves(callee);
+      const findUserById = sinon.stub(userService, 'findUserById').resolves(callee);
       const sendStub = sinon.stub(notification, 'send').resolves();
 
       await events.dialToCallee(fakeSession)(fakePayload);
 
-      expect(hgetallAsyncStub).to.be.calledOnce;
-      expect(sendStub).to.be.calledOnce;
-      expect(sendStub).to.be.calledWith(notificationPayload);
+      expect(findUserById).to.have.been.calledOnce;
+      expect(findUserById).to.have.been.calledWith({ userId: fakePayload.calleeId });
+      expect(sendStub).to.have.been.calledOnce;
+      expect(sendStub).to.have.been.calledWith(notificationPayload);
 
-      hgetallAsyncStub.restore();
+      findUserById.restore();
       sendStub.restore();
     });
   });
@@ -225,15 +226,19 @@ describe('session_control_events', () => {
       leaveStub.restore();
     });
 
-    it('should broadcast bye and cleanup', () => {
+    it('should broadcast bye and cleanup', async () => {
+      const removeUserFromThisCallingStub = sinon.stub(callingService, 'removeUserFromThisCalling').resolves();
       const {
         user,
         room,
       } = fakeSession;
       const byeEventPayload = { sender: user };
 
-      events.byeFromClient(fakeSession)();
+      await events.byeFromClient(fakeSession)();
 
+      expect(removeUserFromThisCallingStub).to.have.been.calledOnce;
+      expect(removeUserFromThisCallingStub).to.have.been.calledWith({ userId: user });
+      expect(toStub).to.have.been.calledAfter(removeUserFromThisCallingStub);
       expect(toStub).to.have.been.calledOnce;
       expect(toStub).to.have.been.calledWith(room);
       expect(emitStub).to.have.been.calledOnce;
@@ -247,6 +252,8 @@ describe('session_control_events', () => {
         socket: undefined,
         io: undefined,
       });
+
+      removeUserFromThisCallingStub.restore();
     });
   });
 });

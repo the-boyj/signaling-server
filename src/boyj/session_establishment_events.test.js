@@ -11,6 +11,7 @@ const sinonChai = require('sinon-chai');
 chai.use(sinonChai);
 
 const events = require('./session_establishment_events');
+const callingService = require('./model/calling_service');
 
 describe('session_establishment_events', () => {
   const io = {};
@@ -43,23 +44,54 @@ describe('session_establishment_events', () => {
   });
 
   context('acceptFromCallee', () => {
-    it('should join the room and broadcast offer', () => {
+    it('should join the room and emit participants', async () => {
       const {
         room,
         user,
       } = fakeSession;
-      const fakePayload = { sdp: 'fake sdp' };
-      const relayOfferPayload = {
-        sender: user,
-        sdp: fakePayload.sdp,
+      const fakeParticipants = [
+        { userId: 'fake user 1' },
+        { userId: 'fake user 2' },
+      ];
+      const participantsPayload = {
+        participants: fakeParticipants,
+        length: fakeParticipants.length,
       };
+      const findUsersInThisCallingAfterJoining = sinon.stub(callingService, 'findUsersInThisCallingAfterJoining')
+        .resolves(fakeParticipants);
 
-      events.acceptFromCallee(fakeSession)(fakePayload);
+      await events.acceptFromCallee(fakeSession)();
 
       expect(joinStub).to.have.been.calledOnce;
       expect(joinStub).to.have.been.calledWith([room, `user:${user}`]);
+      expect(findUsersInThisCallingAfterJoining).to.have.been.calledOnce;
+      expect(findUsersInThisCallingAfterJoining).to.have.been.calledAfter(joinStub);
+      expect(findUsersInThisCallingAfterJoining).to.have.been.calledWith({
+        roomId: room,
+        userId: user,
+      });
+      expect(emitStub).to.have.been.calledOnce;
+      expect(emitStub).to.have.been.calledWith('PARTICIPANTS', participantsPayload);
+
+      findUsersInThisCallingAfterJoining.restore();
+    });
+  });
+
+  context('offerFromCallee', () => {
+    it('should relay offer to receiver', () => {
+      const fakePayload = {
+        sdp: 'fake sdp',
+        receiver: 'fake receiver',
+      };
+      const relayOfferPayload = {
+        sdp: fakePayload.sdp,
+        sender: fakeSession.user,
+      };
+
+      events.offerFromCallee(fakeSession)(fakePayload);
+
       expect(toStub).to.have.been.calledOnce;
-      expect(toStub).to.have.been.calledWith(room);
+      expect(toStub).to.have.been.calledWith(`user:${fakePayload.receiver}`);
       expect(emitStub).to.have.been.calledOnce;
       expect(emitStub).to.have.been.calledWith('RELAY_OFFER', relayOfferPayload);
     });

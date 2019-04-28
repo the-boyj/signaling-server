@@ -7,6 +7,7 @@ const descriptionTable = {
   305: 'Invalid ANSWER Payload',
   306: 'Invalid SEND_ICE_CANDIDATE Payload',
   307: 'Invalid REJECT Payload',
+  308: 'Invalid OFFER Payload',
 };
 
 const code = {
@@ -18,6 +19,7 @@ const code = {
   INVALID_ANSWER_PAYLOAD: 305,
   INVALID_SEND_ICE_CANDIDATE_PAYLOAD: 306,
   INVALID_REJECT_PAYLOAD: 307,
+  INVALID_OFFER_PAYLOAD: 308,
 };
 
 class SignalingError extends Error {

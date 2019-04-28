@@ -1,8 +1,9 @@
 import logger from '../logger';
-import redis from './model/data_source';
 import notification from './notification_messaging';
 import { validatePayload } from './signaling_validations';
 import { code } from './signaling_error';
+import { findUserById } from './model/user_service';
+import { removeUserFromThisCalling } from './model/calling_service';
 
 /**
  * 커넥션 연결 시 소켓에 매핑될 세션객체를 초기화하는 함수
@@ -82,14 +83,13 @@ const dialToCallee = session => async (payload) => {
     user: callerId,
   } = session;
 
-  // TODO: 유저 정보 연동 로직 -> 서비스 레이어로 추상화 필요(RESTful api위해)
-  const callee = await redis.hgetallAsync(`user:${calleeId}`);
+  const callee = await findUserById({ userId: calleeId });
 
   if (!callee) {
     throw new Error(`There is no user data for user ${calleeId}`);
   }
 
-  const { deviceToken } = callee;
+  const { device_token: deviceToken } = callee;
 
   if (!deviceToken) {
     throw new Error(`There is no available deviceToken for user ${calleeId}`);
@@ -144,12 +144,14 @@ const awakenByCaller = session => (payload) => {
  * @param session
  * @returns {Function}
  */
-const byeFromClient = session => () => {
+const byeFromClient = session => async () => {
   const {
     user,
     room,
     socket,
   } = session;
+
+  await removeUserFromThisCalling({ userId: user });
 
   const endOfCallPayload = { sender: user };
 
