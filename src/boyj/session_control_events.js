@@ -89,7 +89,7 @@ const dialToCallee = session => async (payload) => {
     throw new Error(`There is no user data for user ${calleeId}`);
   }
 
-  const { device_token: deviceToken } = callee;
+  const { deviceToken } = callee;
 
   if (!deviceToken) {
     throw new Error(`There is no available deviceToken for user ${calleeId}`);

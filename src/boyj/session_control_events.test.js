@@ -143,14 +143,14 @@ describe('session_control_events', () => {
     });
 
     it('should send notification with caller information', async () => {
-      const callee = { device_token: 'fake deviceToken' };
+      const callee = { deviceToken: 'fake deviceToken' };
       const notificationPayload = {
         data: {
           room: fakeSession.room,
           callerId: fakeSession.user,
         },
         android: { priority: 'high' },
-        token: callee.device_token,
+        token: callee.deviceToken,
       };
       const findUserById = sinon.stub(userService, 'findUserById').resolves(callee);
       const sendStub = sinon.stub(notification, 'send').resolves();

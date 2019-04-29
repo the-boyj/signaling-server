@@ -4,21 +4,27 @@ import {
 } from './data_source';
 
 const Users = sequelize.define('users', {
-  user_id: {
+  userId: {
+    field: 'user_id',
     type: Sequelize.STRING(45),
     primaryKey: true,
     allowNull: false,
   },
-  device_token: { type: Sequelize.STRING(1000) },
+  deviceToken: {
+    field: 'device_token',
+    type: Sequelize.STRING(1000),
+  },
   name: { type: Sequelize.STRING(100) },
 }, { timestamps: false });
 
 const Callings = sequelize.define('callings', {
-  room_id: {
+  roomId: {
+    field: 'room_id',
     type: Sequelize.STRING(45),
     allowNull: false,
   },
-  user_id: {
+  userId: {
+    field: 'user_id',
     type: Sequelize.STRING(45),
     allowNull: false,
   },
@@ -28,11 +34,15 @@ const Callings = sequelize.define('callings', {
     primaryKey: true,
     allowNull: false,
   },
-  calling_from: {
+  callingFrom: {
+    field: 'calling_from',
     type: Sequelize.DATE,
     allowNull: false,
   },
-  calling_to: { type: Sequelize.DATE },
+  callingTo: {
+    field: 'calling_to',
+    type: Sequelize.DATE,
+  },
 }, { timestamps: false });
 
 Users.hasMany(Callings);

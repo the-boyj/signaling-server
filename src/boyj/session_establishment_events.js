@@ -1,6 +1,6 @@
 import { validatePayload } from './signaling_validations';
 import { code } from './signaling_error';
-import { findUsersInThisCallingAfterJoining } from './model/calling_service';
+import { findUsersInThisCallingWithJoining } from './model/calling_service';
 
 /**
  * ACCEPT 이벤트의 핸들러
@@ -21,7 +21,7 @@ const acceptFromCallee = session => async () => {
 
   socket.join([room, `user:${user}`]);
 
-  const users = await findUsersInThisCallingAfterJoining({
+  const users = await findUsersInThisCallingWithJoining({
     roomId: room,
     userId: user,
   });

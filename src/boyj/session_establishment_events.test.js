@@ -57,23 +57,23 @@ describe('session_establishment_events', () => {
         participants: fakeParticipants,
         length: fakeParticipants.length,
       };
-      const findUsersInThisCallingAfterJoining = sinon.stub(callingService, 'findUsersInThisCallingAfterJoining')
+      const findUsersInThisCallingWithJoiningStub = sinon.stub(callingService, 'findUsersInThisCallingWithJoining')
         .resolves(fakeParticipants);
 
       await events.acceptFromCallee(fakeSession)();
 
       expect(joinStub).to.have.been.calledOnce;
       expect(joinStub).to.have.been.calledWith([room, `user:${user}`]);
-      expect(findUsersInThisCallingAfterJoining).to.have.been.calledOnce;
-      expect(findUsersInThisCallingAfterJoining).to.have.been.calledAfter(joinStub);
-      expect(findUsersInThisCallingAfterJoining).to.have.been.calledWith({
+      expect(findUsersInThisCallingWithJoiningStub).to.have.been.calledOnce;
+      expect(findUsersInThisCallingWithJoiningStub).to.have.been.calledAfter(joinStub);
+      expect(findUsersInThisCallingWithJoiningStub).to.have.been.calledWith({
         roomId: room,
         userId: user,
       });
       expect(emitStub).to.have.been.calledOnce;
       expect(emitStub).to.have.been.calledWith('PARTICIPANTS', participantsPayload);
 
-      findUsersInThisCallingAfterJoining.restore();
+      findUsersInThisCallingWithJoiningStub.restore();
     });
   });
 
