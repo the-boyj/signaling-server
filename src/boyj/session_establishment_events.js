@@ -1,36 +1,68 @@
 import { validatePayload } from './signaling_validations';
 import { code } from './signaling_error';
+import { findUsersInThisCallingWithJoining } from './model/calling_service';
 
 /**
  * ACCEPT 이벤트의 핸들러
+ * Callee가 전화 요청에 수락한 직후 수행되며,
+ * 해당 유저가 room에 참여하게된다.
+ * 직후에 해당 유저를 제외한 나머지 유저들의 목록이
+ * PARTICIPANTS 이벤트를 통해 전달된다.
  *
  * @param session
  * @returns {Function}
  */
-const acceptFromCallee = session => (payload) => {
-  validatePayload({
-    payload,
-    props: ['sdp'],
-    options: { code: code.INVALID_ACCEPT_PAYLOAD },
-  });
-
-  const { sdp } = payload;
-
+const acceptFromCallee = session => async () => {
   const {
     user,
     room,
     socket,
   } = session;
 
-  const relayOfferPayload = {
-    sender: user,
-    sdp,
-  };
-
   socket.join([room, `user:${user}`]);
 
-  // 송신자를 제외한 나머지 클라이언트에 브로드캐스팅
-  socket.to(room).emit('RELAY_OFFER', relayOfferPayload);
+  const users = await findUsersInThisCallingWithJoining({
+    roomId: room,
+    userId: user,
+  });
+
+  const participantsPayload = {
+    participants: users,
+    length: users.length,
+  };
+
+  socket.emit('PARTICIPANTS', participantsPayload);
+};
+
+/**
+ * OFFER 이벤트의 핸들러.
+ *
+ * @param session
+ * @returns {Function}
+ */
+const offerFromCallee = session => (payload) => {
+  validatePayload({
+    payload,
+    props: ['sdp', 'receiver'],
+    options: { code: code.INVALID_OFFER_PAYLOAD },
+  });
+
+  const {
+    sdp,
+    receiver,
+  } = payload;
+
+  const {
+    user: sender,
+    socket,
+  } = session;
+
+  const relayOfferPayload = {
+    sdp,
+    sender,
+  };
+
+  socket.to(`user:${receiver}`).emit('RELAY_OFFER', relayOfferPayload);
 };
 
 /**
@@ -125,6 +157,7 @@ const iceCandidateFromClient = session => (payload) => {
 
 export {
   acceptFromCallee,
+  offerFromCallee,
   rejectFromCallee,
   answerFromClient,
   iceCandidateFromClient,

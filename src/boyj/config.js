@@ -18,4 +18,13 @@ export default {
     host: process.env.REDIS_HOST,
     port: process.env.REDIS_PORT,
   },
+  sequelize: {
+    schema: process.env.SEQUELIZE_SCHEMA,
+    user_name: process.env.SEQUELIZE_USER_NAME,
+    password: process.env.SEQUELIZE_PASSWORD,
+    options: {
+      host: process.env.SEQUELIZE_OPTION_HOST,
+      dialect: process.env.SEQUELIZE_OPTION_DIALECT,
+    },
+  },
 };
