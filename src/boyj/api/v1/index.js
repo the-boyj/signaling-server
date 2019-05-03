@@ -1,5 +1,6 @@
 import express from 'express';
 import bodyParser from 'body-parser';
+import * as HttpStatus from 'http-status-codes';
 import { restfulResponse } from './utils';
 import user from './user_controller';
 
@@ -10,7 +11,7 @@ app.use(bodyParser.json());
 app.use('/users', user);
 
 const notFoundHandler = restfulResponse(({ res }) => {
-  res.status(404);
+  res.status(HttpStatus.NOT_FOUND);
 });
 
 // 이벤트 핸들러 등록과 실제 실행 순서가 같으므로

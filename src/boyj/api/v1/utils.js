@@ -60,7 +60,7 @@ const getJsonResponse = async ({
     });
   } catch (err) {
     if (!isFailStatus(res.statusCode)) {
-      res.status(500);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     // eslint-disable-next-line no-multi-assign
