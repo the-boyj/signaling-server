@@ -1,4 +1,5 @@
 import listen from 'socket.io';
+import * as http from 'http';
 import logger from './logger';
 
 /**
@@ -15,13 +16,17 @@ export default class SignalingServer {
    *
    * @param port
    */
-  constructor({ port = 3000 }) {
+  constructor({
+    port = 3000,
+    restful,
+  }) {
     // 서버의 설정과 초기화에 사용되는 객체
     this.port = port;
+    this.server = (restful && http.createServer(restful)) || null;
     this.eventHandlers = new Map();
 
     // socket.io 관련 객체
-    this.io = listen(null, {});
+    this.io = listen(this.server, {});
 
     // hook methods
     this.createSession = defaultParam => defaultParam;
@@ -160,7 +165,7 @@ export default class SignalingServer {
       hookAfterSocketInitialization(session);
     });
 
-    io.listen(port);
+    this.server.listen(3000);
     logger.info(`server started at port ${port}`);
   }
 
@@ -169,6 +174,6 @@ export default class SignalingServer {
    * 테스트 등의 제한된 환경에서 사용할 수 있습니다.
    */
   stop() {
-    this.io.close();
+    this.server.close();
   }
 }

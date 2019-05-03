@@ -1,3 +1,4 @@
+import express from 'express';
 import Server from './server';
 import {
   createSession,
@@ -15,8 +16,15 @@ import {
 } from './boyj/session_establishment_events';
 import errorHandler from './boyj/signaling_error_handler';
 import { withSession } from './boyj/signaling_validations';
+import api from './boyj/api';
 
-const server = new Server({ port: 3000 });
+const app = express();
+app.use('/api', api);
+
+const server = new Server({
+  port: 3000,
+  restful: app,
+});
 
 server
   .setCreateSession(createSession)
