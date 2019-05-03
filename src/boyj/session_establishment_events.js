@@ -82,6 +82,7 @@ const rejectFromCallee = session => (payload) => {
 
   const {
     user,
+    room,
     socket,
   } = session;
 
@@ -91,6 +92,8 @@ const rejectFromCallee = session => (payload) => {
   };
 
   socket.to(`user:${receiver}`).emit('NOTIFY_REJECT', notifyRejectPayload);
+  socket.leave([room, `user:${user}`]);
+  socket.close();
 };
 
 /**

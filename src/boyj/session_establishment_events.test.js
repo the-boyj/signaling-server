@@ -17,13 +17,17 @@ describe('session_establishment_events', () => {
   const io = {};
   const socket = {
     join: () => {},
+    leave: () => {},
     emit: () => {},
     to: () => {},
+    close: () => {},
   };
   let fakeSession;
   let joinStub;
+  let leaveStub;
   let emitStub;
   let toStub;
+  let closeStub;
 
   beforeEach(() => {
     fakeSession = {
@@ -33,14 +37,18 @@ describe('session_establishment_events', () => {
       room: 'fake room',
     };
     joinStub = sinon.stub(socket, 'join');
+    leaveStub = sinon.stub(socket, 'leave');
     emitStub = sinon.stub(socket, 'emit');
     toStub = sinon.stub(socket, 'to').returns(socket);
+    closeStub = sinon.stub(socket, 'close');
   });
 
   afterEach(() => {
     joinStub.restore();
+    leaveStub.restore();
     emitStub.restore();
     toStub.restore();
+    closeStub.restore();
   });
 
   context('acceptFromCallee', () => {
@@ -112,6 +120,11 @@ describe('session_establishment_events', () => {
       expect(toStub).to.have.been.calledWith(`user:${fakePayload.receiver}`);
       expect(emitStub).to.have.been.calledOnce;
       expect(emitStub).to.have.been.calledWith('NOTIFY_REJECT', byeEventPayload);
+      expect(leaveStub).to.have.been.calledOnce;
+      expect(leaveStub).to.have.been.calledAfter(emitStub);
+      expect(leaveStub).to.have.been.calledWith([fakeSession.room, `user:${user}`]);
+      expect(closeStub).to.have.been.calledOnce;
+      expect(closeStub).to.have.been.calledAfter(leaveStub);
     });
   });
 
