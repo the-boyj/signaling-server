@@ -30,6 +30,7 @@ export default class SignalingServer {
 
     // hook methods
     this.createSession = defaultParam => defaultParam;
+    this.releaseSession = () => {};
     this.hookAfterSessionCreation = () => {};
     this.hookAfterSocketInitialization = () => {};
     this.defaultErrorHandler = () => {};
@@ -46,6 +47,18 @@ export default class SignalingServer {
    */
   setCreateSession(createSession = defaultSession => defaultSession) {
     this.createSession = createSession;
+    return this;
+  }
+
+  /**
+   * Session 객체가 갖고있는 유저의 추가적인 정보를 해제한다.
+   * 메모리 누수가 발생하지 않도록 각 프로퍼티의 reference count를 관리한다.
+   *
+   * @param releaseSession
+   * @returns {SignalingServer}
+   */
+  setReleaseSession(releaseSession = () => {}) {
+    this.releaseSession = releaseSession;
     return this;
   }
 
@@ -163,6 +176,12 @@ export default class SignalingServer {
       });
 
       hookAfterSocketInitialization(session);
+
+      socket.on('disconnect', () => {
+        this.releaseSession(session);
+        // eslint-disable-next-line no-multi-assign
+        session.io = session.socket = undefined;
+      });
     });
 
     this.server.listen(3000);

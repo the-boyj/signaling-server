@@ -21,6 +21,11 @@ const createSession = (defaultSession) => {
   return session;
 };
 
+const releaseSession = (session) => {
+  // eslint-disable-next-line no-param-reassign,no-multi-assign
+  session.room = session.user = session.callerId = undefined;
+};
+
 /**
  * caller의 방 생성 요청 이벤트(CREATE_ROOM)의 핸들러 함수이다.
  * 세션 생성 후 처음으로 caller 정보 및 room 정보를 받을 수 있기 때문에
@@ -158,9 +163,7 @@ const byeFromClient = session => async () => {
   // sender를 제외한 나머지 클라이언트에 해당 정보를 브로드캐스팅
   socket.to(room).emit('NOTIFY_END_OF_CALL', endOfCallPayload);
   socket.leave([room, `user:${user}`]);
-
-  // eslint-disable-next-line
-  session.user = session.callerId = session.room = session.socket = session.io = undefined;
+  socket.close();
 };
 
 const receiveErrorFromClient = session => (payload) => {
@@ -178,6 +181,7 @@ const receiveErrorFromClient = session => (payload) => {
 
 export {
   createSession,
+  releaseSession,
   createRoom,
   dialToCallee,
   awakenByCaller,
