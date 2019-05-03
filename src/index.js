@@ -2,6 +2,7 @@ import express from 'express';
 import Server from './server';
 import {
   createSession,
+  releaseSession,
   createRoom,
   dialToCallee,
   awakenByCaller,
@@ -12,7 +13,7 @@ import {
   acceptFromCallee,
   rejectFromCallee,
   answerFromClient,
-  iceCandidateFromClient,
+  iceCandidateFromClient, offerFromCallee,
 } from './boyj/session_establishment_events';
 import errorHandler from './boyj/signaling_error_handler';
 import { withSession } from './boyj/signaling_validations';
@@ -28,6 +29,7 @@ const server = new Server({
 
 server
   .setCreateSession(createSession)
+  .setReleaseSession(releaseSession)
   .setHookAfterSessionCreation(() => {})
   .setHookAfterSocketInitialization(() => {})
   .setDefaultErrorHandler(errorHandler)
@@ -36,6 +38,7 @@ server
   .on('AWAKEN', awakenByCaller)
   .on('ACCEPT', withSession(acceptFromCallee))
   .on('REJECT', withSession(rejectFromCallee))
+  .on('OFFER', withSession(offerFromCallee))
   .on('ANSWER', withSession(answerFromClient))
   .on('SEND_ICE_CANDIDATE', withSession(iceCandidateFromClient))
   .on('END_OF_CALL', withSession(byeFromClient))

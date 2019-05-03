@@ -24,6 +24,7 @@ describe('session_control_events', () => {
     emit: () => {},
     to: () => {},
     leave: () => {},
+    close: () => {},
   };
   let fakeSession;
   let validatePayloadStub;
@@ -54,6 +55,30 @@ describe('session_control_events', () => {
       const session = events.createSession(fakeDefaultSession);
 
       expect(session).to.deep.include(fakeDefaultSession);
+    });
+  });
+
+  context('releaseSession', () => {
+    it('should not contain boyj session properties', () => {
+      const session = {
+        room: 'fake room',
+        user: 'fake user',
+        callerId: 'fake callerId',
+      };
+      const fakeAdditionalProperties = {
+        fakeProperty1: 'fake1',
+        fakeProperty2: 'fake2',
+        fakeProperty3: 'fake3',
+      };
+
+      Object.assign(session, fakeAdditionalProperties);
+
+      events.releaseSession(session);
+
+      expect(session).to.have.property('room').with.not.exist;
+      expect(session).to.have.property('user').with.not.exist;
+      expect(session).to.have.property('callerId').with.not.exist;
+      expect(session).to.deep.include(fakeAdditionalProperties);
     });
   });
 
@@ -209,11 +234,13 @@ describe('session_control_events', () => {
     let emitStub;
     let toStub;
     let leaveStub;
+    let closeStub;
 
     beforeEach(() => {
       emitStub = sinon.stub(socket, 'emit');
       toStub = sinon.stub(socket, 'to').returns(socket);
       leaveStub = sinon.stub(socket, 'leave');
+      closeStub = sinon.stub(socket, 'close');
       Object.assign(fakeSession, {
         user: 'fake user',
         room: 'fake room',
@@ -244,14 +271,10 @@ describe('session_control_events', () => {
       expect(emitStub).to.have.been.calledOnce;
       expect(emitStub).to.have.been.calledWith('NOTIFY_END_OF_CALL', byeEventPayload);
       expect(leaveStub).to.have.been.calledOnce;
-      expect(leaveStub).to.have.been.calledWith([room, `user:${user}`]);
-      expect(fakeSession).to.deep.equal({
-        user: undefined,
-        callerId: undefined,
-        room: undefined,
-        socket: undefined,
-        io: undefined,
-      });
+      expect(leaveStub).to.have.been.calledAfter(emitStub);
+      expect(leaveStub).to.have.been.calledWith([fakeSession.room, `user:${user}`]);
+      expect(closeStub).to.have.been.calledOnce;
+      expect(closeStub).to.have.been.calledAfter(leaveStub);
 
       removeUserFromThisCallingStub.restore();
     });
