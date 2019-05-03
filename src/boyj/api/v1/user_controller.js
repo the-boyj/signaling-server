@@ -1,6 +1,9 @@
 import express from 'express';
 import * as HttpStatus from 'http-status-codes';
-import {UniqueConstraintError, ValidationError} from 'sequelize';
+import {
+  UniqueConstraintError,
+  ValidationError,
+} from 'sequelize';
 import { restfulResponse } from './utils';
 import * as Users from '../../model/user_service';
 
@@ -19,12 +22,18 @@ app.get('/', restfulResponse(async ({
 }));
 
 app.get('/:userId', restfulResponse(async ({
+  res,
   model,
   params,
 }) => {
   const { userId } = params;
 
   const user = await Users.findUserById({ userId });
+
+  if (!user) {
+    res.status(HttpStatus.NOT_FOUND);
+    return;
+  }
 
   model.set('data', user);
 }));
