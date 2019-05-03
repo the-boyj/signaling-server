@@ -22,7 +22,7 @@ app.get('/', restfulResponse(async ({
 
   const users = await Users.findAllUsers({ except: exceptUsers });
 
-  model.set('data', users);
+  model.setData(users);
 }));
 
 /**
@@ -36,7 +36,7 @@ app.post('/', restfulResponse(async ({
 }) => Users.save(user)
   .then((savedUser) => {
     res.status(HttpStatus.CREATED);
-    model.set('data', savedUser);
+    model.setData(savedUser);
   })
   .catch((err) => {
     if (err instanceof UniqueConstraintError) {
@@ -64,7 +64,7 @@ app.get('/:userId', restfulResponse(async ({
     return;
   }
 
-  model.set('data', user);
+  model.setData(user);
 }));
 
 /**
@@ -89,7 +89,7 @@ app.post('/:userId', restfulResponse(async ({
   await Users.setUserInfo(user)
     .then((updatedUser) => {
       res.status(HttpStatus.CREATED);
-      model.set('data', updatedUser);
+      model.setData(updatedUser);
     })
     .catch((err) => {
       if (err instanceof ValidationError) {

@@ -1,18 +1,29 @@
 import * as HttpStatus from 'http-status-codes';
 
+class Model {
+  constructor() {
+    this.data = null;
+  }
+
+  setData(data) {
+    this.data = data;
+  }
+
+  getData() {
+    return this.data;
+  }
+}
+
 const STATUS_ERROR = 4;
 const STATUS_FAIL = 5;
 
 const getStatusType = code => Math.floor(code / 100);
 
-const isSuccessStatus = (code) => {
-  const statusType = getStatusType(code);
-
-  return statusType !== STATUS_ERROR
-    && statusType !== STATUS_FAIL;
-};
+const isErrorStatus = code => getStatusType(code) === STATUS_ERROR;
 
 const isFailStatus = code => getStatusType(code) === STATUS_FAIL;
+
+const isSuccessStatus = code => !isErrorStatus(code) && !isFailStatus(code);
 
 const getStatus = (code) => {
   const statusType = getStatusType(code);
@@ -29,10 +40,25 @@ const getStatus = (code) => {
 
 /**
  * 유저 요청에 대한 응답을 만드는 함수.
+ * callback 함수에 다양한 HTTP 관련 인자가 들어간다.
  *
- * @param req
- * @param res
- * @param callback
+ * req: HTTP Request
+ *
+ * res: HTTP Response
+ *
+ * query: HTTP query string
+ *   ex) userId from url /users?userId=...
+ *
+ * params: parameters in HTTP url
+ *   ex) userId from url /users/:userId
+ *
+ * form: HTTP form data used in POST method (x-www-form-urlencoded)
+ *
+ * model: 핸들러로부터의 응답 데이터를 담기위한 Return Parameter
+ *
+ * @param req: HTTP Request
+ * @param res: HTTP Response
+ * @param callback: HTTP 요청에 대한 이벤트 핸들러 함수.
  */
 const getJsonResponse = async ({
   req,
@@ -44,10 +70,9 @@ const getJsonResponse = async ({
     params,
     body: form,
   } = req;
-  const model = new Map();
+  const model = new Model();
 
-  let message = null;
-  let data = null;
+  let error = null;
 
   try {
     await callback({
@@ -63,26 +88,32 @@ const getJsonResponse = async ({
       res.status(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    // eslint-disable-next-line no-multi-assign
-    message = data = err.message;
+    error = err;
   }
 
   const { statusCode } = res;
-  const isSuccess = isSuccessStatus(statusCode);
-
-  if (isSuccess) {
-    data = model.get('data');
-  } else {
-    // eslint-disable-next-line no-multi-assign
-    message = data = message || HttpStatus.getStatusText(statusCode);
-  }
-
-  return {
+  const jsonResponse = {
     code: statusCode,
     status: getStatus(statusCode),
-    message,
-    data,
+    message: null,
+    data: null,
   };
+
+  if (isErrorStatus(statusCode)) {
+    jsonResponse.message = error.message;
+    jsonResponse.data = error.message;
+  }
+
+  if (isFailStatus(statusCode)) {
+    jsonResponse.message = HttpStatus.getStatusText(statusCode);
+    jsonResponse.data = HttpStatus.getStatusText(statusCode);
+  }
+
+  if (isSuccessStatus(statusCode)) {
+    jsonResponse.data = model.getData();
+  }
+
+  return jsonResponse;
 };
 
 const restfulResponse = callback => async (req, res) => {
