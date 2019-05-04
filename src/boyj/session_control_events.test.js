@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-expressions */
+/* eslint-disable no-unused-expressions,object-curly-newline,no-underscore-dangle */
 const chai = require('chai');
 
 const { expect } = chai;
@@ -10,12 +10,16 @@ const sinonChai = require('sinon-chai');
 
 chai.use(sinonChai);
 
-const events = require('./session_control_events');
+const rewire = require('rewire');
+
+const sequelize = require('sequelize');
 const validator = require('./signaling_validations');
 const { code } = require('./signaling_error');
 const userService = require('./model/user_service');
 const callingService = require('./model/calling_service');
 const notification = require('./notification_messaging').default;
+
+let events = rewire('./session_control_events');
 
 describe('session_control_events', () => {
   const io = {};
@@ -24,7 +28,7 @@ describe('session_control_events', () => {
     emit: () => {},
     to: () => {},
     leave: () => {},
-    close: () => {},
+    disconnect: () => {},
   };
   let fakeSession;
   let validatePayloadStub;
@@ -83,14 +87,38 @@ describe('session_control_events', () => {
   });
 
   context('createRoom', () => {
-    it('should assign session info and join into the room', () => {
-      const fakePayload = {
-        room: 'fake room',
-        callerId: 'fake callerId',
-      };
-      const joinStub = sinon.stub(socket, 'join').callsFake(() => {});
+    const fakePayload = {
+      room: 'fake room',
+      callerId: 'fake callerId',
+    };
 
-      events.createRoom(fakeSession)(fakePayload);
+    let joinStub;
+
+    beforeEach(() => {
+      joinStub = sinon.stub(socket, 'join').callsFake(() => {});
+    });
+
+    afterEach(() => {
+      joinStub.restore();
+    });
+
+    it('should throw SignalingError if there is no user data', () => {
+      const joinInThisCallingStub = sinon.stub(callingService, 'joinInThisCalling')
+        .rejects(new sequelize.ForeignKeyConstraintError());
+
+      const createRoomPromise = events.createRoom(fakeSession)(fakePayload);
+
+      expect(createRoomPromise).to.eventually.rejectedWith(`There is no user ${fakePayload.callerId}`, {
+        code: code.INVALID_CREATE_ROOM_PAYLOAD,
+      });
+
+      joinInThisCallingStub.restore();
+    });
+
+    it('should assign session info and join into the room', async () => {
+      const joinInThisCallingStub = sinon.stub(callingService, 'joinInThisCalling').resolves();
+
+      await events.createRoom(fakeSession)(fakePayload);
 
       expect(validatePayloadStub).to.have.been.calledOnce;
       expect(validatePayloadStub).to.have.been.calledWith({
@@ -102,8 +130,15 @@ describe('session_control_events', () => {
       expect(fakeSession).to.have.property('user').with.equal('fake callerId');
       expect(joinStub).to.be.calledOnce;
       expect(joinStub).to.be.calledWith(['fake room', 'user:fake callerId']);
+      expect(joinInThisCallingStub).to.have.been.calledOnce;
+      expect(joinInThisCallingStub).to.have.been.calledAfter(joinStub);
+      expect(joinInThisCallingStub).to.have.been.calledWith({
+        userId: fakePayload.callerId,
+        roomId: fakePayload.room,
+      });
 
       joinStub.restore();
+      joinInThisCallingStub.restore();
     });
   });
 
@@ -231,16 +266,23 @@ describe('session_control_events', () => {
   });
 
   context('byeFromClient', () => {
+    let sandbox;
+
     let emitStub;
     let toStub;
     let leaveStub;
-    let closeStub;
+    let disconnectStub;
 
     beforeEach(() => {
+      sandbox = sinon.createSandbox();
+
       emitStub = sinon.stub(socket, 'emit');
       toStub = sinon.stub(socket, 'to').returns(socket);
       leaveStub = sinon.stub(socket, 'leave');
-      closeStub = sinon.stub(socket, 'close');
+      disconnectStub = sandbox.stub();
+
+      events.__set__('disconnect', disconnectStub);
+
       Object.assign(fakeSession, {
         user: 'fake user',
         room: 'fake room',
@@ -251,6 +293,9 @@ describe('session_control_events', () => {
       emitStub.restore();
       toStub.restore();
       leaveStub.restore();
+
+      sandbox.restore();
+      events = rewire('./session_control_events');
     });
 
     it('should broadcast bye and cleanup', async () => {
@@ -273,8 +318,8 @@ describe('session_control_events', () => {
       expect(leaveStub).to.have.been.calledOnce;
       expect(leaveStub).to.have.been.calledAfter(emitStub);
       expect(leaveStub).to.have.been.calledWith([fakeSession.room, `user:${user}`]);
-      expect(closeStub).to.have.been.calledOnce;
-      expect(closeStub).to.have.been.calledAfter(leaveStub);
+      expect(disconnectStub).to.have.been.calledOnce;
+      expect(disconnectStub).to.have.been.calledAfter(leaveStub);
 
       removeUserFromThisCallingStub.restore();
     });
