@@ -1,9 +1,17 @@
+/* eslint-disable object-curly-newline */
+import { ForeignKeyConstraintError } from 'sequelize';
 import logger from '../logger';
 import notification from './notification_messaging';
 import { validatePayload } from './signaling_validations';
-import { code } from './signaling_error';
+import {
+  code,
+  SignalingError,
+} from './signaling_error';
 import { findUserById } from './model/user_service';
-import { removeUserFromThisCalling } from './model/calling_service';
+import {
+  joinInThisCalling,
+  removeUserFromThisCalling,
+} from './model/calling_service';
 
 /**
  * 커넥션 연결 시 소켓에 매핑될 세션객체를 초기화하는 함수
@@ -34,7 +42,7 @@ const releaseSession = (session) => {
  * @param session
  * @returns {Function}
  */
-const createRoom = session => (payload) => {
+const createRoom = session => async (payload) => {
   validatePayload({
     payload,
     props: ['room', 'callerId'],
@@ -56,6 +64,18 @@ const createRoom = session => (payload) => {
   const { socket } = session;
 
   socket.join([room, `user:${callerId}`]);
+
+  await joinInThisCalling({
+    userId: callerId,
+    roomId: room,
+  }).catch((err) => {
+    if (err instanceof ForeignKeyConstraintError) {
+      throw new SignalingError(`There is no user ${callerId}.`, {
+        code: code.INVALID_CREATE_ROOM_PAYLOAD,
+      });
+    }
+    throw err;
+  });
 };
 
 /**
@@ -141,6 +161,13 @@ const awakenByCaller = session => (payload) => {
   Object.assign(session, extraSessionInfo);
 };
 
+// The socket will disconnect 100ms later.
+const disconnect = (socket) => {
+  setTimeout(() => {
+    socket.disconnect(true);
+  }, 100);
+};
+
 /**
  * 수신자의 END_OF_CALL 이벤트에 대한 핸들러.
  * 수신자를 room에서 제외시키며
@@ -163,7 +190,7 @@ const byeFromClient = session => async () => {
   // sender를 제외한 나머지 클라이언트에 해당 정보를 브로드캐스팅
   socket.to(room).emit('NOTIFY_END_OF_CALL', endOfCallPayload);
   socket.leave([room, `user:${user}`]);
-  socket.close();
+  disconnect(socket);
 };
 
 const receiveErrorFromClient = session => (payload) => {

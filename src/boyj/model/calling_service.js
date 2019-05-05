@@ -5,6 +5,19 @@ import {
   Sequelize,
 } from './data_source';
 
+const joinInThisCalling = ({
+  roomId,
+  userId,
+}) => sequelize.transaction({
+  isolationLevel: Sequelize.Transaction.ISOLATION_LEVELS.SERIALIZABLE,
+}, t => Callings.create({
+  roomId,
+  userId,
+  callingFrom: Date.now(),
+}, {
+  transaction: t,
+}).then(resp => resp.dataValues));
+
 /**
  * userId를 제외하고 room에 참여중인 다른 유저들 목록을 반환
  * userId가 room에 참여하는 것을 포함하며
@@ -58,6 +71,7 @@ const removeUserFromThisCalling = ({ userId }) => Callings.update({ callingTo: D
 });
 
 export {
+  joinInThisCalling,
   findUsersInThisCallingWithJoining,
   removeUserFromThisCalling,
 };
