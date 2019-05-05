@@ -72,7 +72,7 @@ const getJsonResponse = async ({
   } = req;
   const model = new Model();
 
-  let error = null;
+  let error = {};
 
   try {
     await callback({
@@ -99,12 +99,12 @@ const getJsonResponse = async ({
     data: null,
   };
 
-  if (isErrorStatus(statusCode)) {
+  if (isFailStatus(statusCode)) {
     jsonResponse.message = error.message;
     jsonResponse.data = error.message;
   }
 
-  if (isFailStatus(statusCode)) {
+  if (isErrorStatus(statusCode)) {
     jsonResponse.message = HttpStatus.getStatusText(statusCode);
     jsonResponse.data = HttpStatus.getStatusText(statusCode);
   }
