@@ -114,6 +114,11 @@ const answerFromClient = session => (payload) => {
     receiver,
   } = payload;
 
+  if (!sdp.description) {
+    sdp.description = sdp.sdp;
+  }
+  sdp.type = sdp.type.toUpperCase();
+
   const {
     user,
     socket,
@@ -144,6 +149,10 @@ const iceCandidateFromClient = session => (payload) => {
     iceCandidate,
     receiver,
   } = payload;
+
+  if (!iceCandidate.candidate) {
+    iceCandidate.candidate = iceCandidate.sdp;
+  }
 
   const {
     user,
