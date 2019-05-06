@@ -30,6 +30,17 @@ const createSession = (defaultSession) => {
 };
 
 const releaseSession = (session) => {
+  const { 
+    io,
+    room,
+    user,
+  } = session;
+  
+  if (room && user) {
+    const notifyEndOfCallPayload = { sender: user };
+    io.to(room).emit('NOTIFY_END_OF_CALL', notifyEndOfCallPayload);
+  }
+
   // eslint-disable-next-line no-param-reassign,no-multi-assign
   session.room = session.user = session.callerId = undefined;
 };
