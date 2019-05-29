@@ -52,6 +52,11 @@ const offerFromCallee = session => (payload) => {
     receiver,
   } = payload;
 
+  if (!session.user) {
+    // DB로부터 유저 정보를 가져오고, 마지막 통화 상태로 세션을 초기화 한다.
+    Callings
+  }
+
   const {
     user: sender,
     socket,

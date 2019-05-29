@@ -70,6 +70,8 @@ const removeUserFromThisCalling = ({ userId }) => Callings.update({ callingTo: D
   },
 });
 
+const findLastCalling = ({ userId }) =>
+
 export {
   joinInThisCalling,
   findUsersInThisCallingWithJoining,
