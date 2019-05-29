@@ -27,7 +27,7 @@ export default class SignalingServer {
 
     // socket.io 관련 객체
     this.io = listen(this.server, {
-      pingTimeout: 15000,
+      pingTimeout: 60000,
     });
 
     // hook methods

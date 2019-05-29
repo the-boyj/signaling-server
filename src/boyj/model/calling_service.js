@@ -70,10 +70,106 @@ const removeUserFromThisCalling = ({ userId }) => Callings.update({ callingTo: D
   },
 });
 
-const findLastCalling = ({ userId }) =>
+const lastRoomIdQuery = `
+SELECT DISTINCT room_id as roomId
+  FROM callings
+ WHERE (user_id, calling_from) = (
+     SELECT user_id, max(calling_from) as calling_from
+       FROM callings
+      WHERE user_id = :userId
+     GROUP BY user_id
+ )
+`;
+
+const findLastRoomWithSetupCalling = ({ userId }) => sequelize.transaction({
+  isolationLevel: Sequelize.Transaction.ISOLATION_LEVELS.SERIALIZABLE,
+}, async (t) => {
+  const lastRoomId = await sequelize.query(lastRoomIdQuery, {
+    replacements: { userId },
+    type: Sequelize.QueryTypes.SELECT,
+    transaction: t,
+  }).then((resp) => {
+    if (resp.length !== 1) {
+      return null;
+    }
+    return resp[0].roomId;
+  });
+
+  if (!lastRoomId) {
+    return null;
+  }
+
+  await Callings.update({ callingTo: null }, {
+    where: {
+      userId,
+      roomId: lastRoomId,
+    },
+    transaction: t,
+  });
+
+  return lastRoomId;
+});
+
+const findCallingRoomIdQuery = `
+SELECT DISTINCT room_id as roomId
+  FROM callings
+ WHERE user_id = :userId
+   AND calling_to IS NULL
+`;
+
+const isCallingIn = ({
+  userId,
+}) => sequelize.transaction(async (t) => {
+  const callingRoomId = await sequelize.query(findCallingRoomIdQuery, {
+    replacements: {
+      userId,
+    },
+    transaction: t,
+  }).then(resp => resp[0])
+    .then((data) => {
+      if (data.length === 0) {
+        return null;
+      }
+      return data[0].roomId;
+    });
+
+  return callingRoomId !== null;
+});
+
+const findCallingInThisRoomQuery = `
+SELECT DISTINCT room_id as roomId
+  FROM callings
+ WHERE user_id = :userId
+   AND room_id = :roomId
+   AND calling_to IS NULL
+`;
+
+const isCallingInThisRoom = ({
+  userId,
+  roomId,
+}) => sequelize.transaction(async (t) => {
+  const callingRoomId = await sequelize.query(findCallingInThisRoomQuery, {
+    replacements: {
+      userId,
+      roomId,
+    },
+    transaction: t,
+  }).then(resp => resp[0])
+    .then((data) => {
+      if (data.length === 0) {
+        return null;
+      }
+      return data[0].roomId;
+    });
+
+  return callingRoomId === roomId;
+});
 
 export {
   joinInThisCalling,
   findUsersInThisCallingWithJoining,
   removeUserFromThisCalling,
+  findLastRoomWithSetupCalling,
+  isCallingIn,
+  isCallingInThisRoom,
 };

@@ -11,6 +11,7 @@ import { findUserById } from './model/user_service';
 import {
   joinInThisCalling,
   removeUserFromThisCalling,
+  isCallingInThisRoom,
 } from './model/calling_service';
 
 /**
@@ -29,15 +30,22 @@ const createSession = (defaultSession) => {
   return session;
 };
 
-const releaseSession = (session) => {
-  const { 
+const releaseSession = async (session) => {
+  const {
     io,
     room,
     user,
   } = session;
-  
+
   if (room && user) {
-    const notifyEndOfCallPayload = { sender: user };
+    const timeout = await isCallingInThisRoom({
+      userId: user,
+      roomId: room,
+    });
+    const notifyEndOfCallPayload = {
+      sender: user,
+      timeout,
+    };
     io.to(room).emit('NOTIFY_END_OF_CALL', notifyEndOfCallPayload);
   }
 
@@ -196,7 +204,10 @@ const byeFromClient = session => async () => {
 
   await removeUserFromThisCalling({ userId: user });
 
-  const endOfCallPayload = { sender: user };
+  const endOfCallPayload = {
+    sender: user,
+    timeout: false,
+  };
 
   // sender를 제외한 나머지 클라이언트에 해당 정보를 브로드캐스팅
   socket.to(room).emit('NOTIFY_END_OF_CALL', endOfCallPayload);

@@ -30,7 +30,10 @@ const server = new Server({
 server
   .setCreateSession(createSession)
   .setReleaseSession(releaseSession)
-  .setHookAfterSessionCreation(() => {})
+  .setHookAfterSessionCreation((session) => {
+    const { socket } = session;
+    socket.emit('CONNECTION_ACK');
+  })
   .setHookAfterSocketInitialization(() => {})
   .setDefaultErrorHandler(errorHandler)
   .on('CREATE_ROOM', createRoom)
