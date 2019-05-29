@@ -26,7 +26,9 @@ export default class SignalingServer {
     this.eventHandlers = new Map();
 
     // socket.io 관련 객체
-    this.io = listen(this.server, {});
+    this.io = listen(this.server, {
+      pingTimeout: 15000,
+    });
 
     // hook methods
     this.createSession = defaultParam => defaultParam;
