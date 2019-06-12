@@ -30,7 +30,10 @@ const server = new Server({
 server
   .setCreateSession(createSession)
   .setReleaseSession(releaseSession)
-  .setHookAfterSessionCreation(() => {})
+  .setHookAfterSessionCreation((session) => {
+    const { socket } = session;
+    socket.emit('CONNECTION_ACK');
+  })
   .setHookAfterSocketInitialization(() => {})
   .setDefaultErrorHandler(errorHandler)
   .on('CREATE_ROOM', createRoom)
@@ -38,9 +41,9 @@ server
   .on('AWAKEN', awakenByCaller)
   .on('ACCEPT', withSession(acceptFromCallee))
   .on('REJECT', withSession(rejectFromCallee))
-  .on('OFFER', withSession(offerFromCallee))
+  .on('OFFER', offerFromCallee)
   .on('ANSWER', withSession(answerFromClient))
-  .on('SEND_ICE_CANDIDATE', withSession(iceCandidateFromClient))
+  .on('SEND_ICE_CANDIDATE', iceCandidateFromClient)
   .on('END_OF_CALL', withSession(byeFromClient))
   .on('PEER_TO_SERVER_ERROR', withSession(receiveErrorFromClient))
   .start();

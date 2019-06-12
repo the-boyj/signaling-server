@@ -1,6 +1,10 @@
 import { validatePayload } from './signaling_validations';
 import { code } from './signaling_error';
-import { findUsersInThisCallingWithJoining } from './model/calling_service';
+import {
+  findUsersInThisCallingWithJoining,
+  findLastRoomWithSetupCalling,
+  isCallingIn,
+} from './model/calling_service';
 
 /**
  * ACCEPT 이벤트의 핸들러
@@ -40,7 +44,7 @@ const acceptFromCallee = session => async () => {
  * @param session
  * @returns {Function}
  */
-const offerFromCallee = session => (payload) => {
+const offerFromCallee = session => async (payload) => {
   validatePayload({
     payload,
     props: ['sdp', 'receiver'],
@@ -50,12 +54,24 @@ const offerFromCallee = session => (payload) => {
   const {
     sdp,
     receiver,
+    sender: callee,
   } = payload;
 
-  const {
-    user: sender,
-    socket,
-  } = session;
+  const { socket } = session;
+
+  if (!session.user) {
+    const room = await findLastRoomWithSetupCalling({ userId: callee });
+    console.log(room, callee);
+    const extraSessionInfo = {
+      user: callee,
+      room,
+    };
+
+    Object.assign(session, extraSessionInfo);
+    socket.join([room, `user:${callee}`]);
+  }
+
+  const { user: sender } = session;
 
   const relayOfferPayload = {
     sdp,
@@ -133,12 +149,21 @@ const answerFromClient = session => (payload) => {
  * @param session
  * @returns {Function}
  */
-const iceCandidateFromClient = session => (payload) => {
+const iceCandidateFromClient = session => async (payload) => {
   validatePayload({
     payload,
     props: ['iceCandidate', 'receiver'],
     options: { code: code.INVALID_SEND_ICE_CANDIDATE_PAYLOAD },
   });
+
+  if (!session.user) {
+    const { sender } = payload;
+    const isCalling = await isCallingIn({ userId: sender });
+
+    if (!isCalling || !session.user) {
+      return;
+    }
+  }
 
   const {
     iceCandidate,
