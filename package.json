@@ -42,7 +42,7 @@
     "eslint-plugin-import": "^2.14.0",
     "eslint-plugin-jsx-a11y": "^6.1.2",
     "eslint-plugin-react": "^7.12.3",
-    "mocha": "^5.2.0",
+    "mocha": "^10.2.0",
     "rewire": "^4.0.1",
     "rimraf": "^2.6.3",
     "sinon": "^7.3.1",
